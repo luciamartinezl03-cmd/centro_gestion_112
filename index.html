@@ -6,7 +6,88 @@
 <title>Centro de Gestión 112</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+// ────────────────────────── ACTIVOS DISPONIBLES
+let activosOpen = false;
+let activoMapMarkers = { ambulancias: [], policias: [], bomberos: [] };
+let activoLayerVisible = { ambulancias: true, policias: true, bomberos: true };
+
+const STATUS_BORDER = { libre: '#187a40', ocupado: '#9a7200', 'en-ruta': '#1460c8' };
+
+function toggleActivos(e) {
+  e.stopPropagation();
+  activosOpen = !activosOpen;
+  document.getElementById('activosDropdown').classList.toggle('open', activosOpen);
+  if (activosOpen) {
+    renderActivosOnMap();
+    setTimeout(() => document.addEventListener('click', activosOutside), 10);
+  } else {
+    document.removeEventListener('click', activosOutside);
+  }
+}
+
+function activosOutside(e) {
+  if (!document.getElementById('activosWrap').contains(e.target)) {
+    activosOpen = false;
+    document.getElementById('activosDropdown').classList.remove('open');
+    document.removeEventListener('click', activosOutside);
+  }
+}
+
+function renderActivosOnMap() {
+  // Clear existing activo markers
+  Object.values(activoMapMarkers).flat().forEach(m => map.removeLayer(m));
+  activoMapMarkers = { ambulancias: [], policias: [], bomberos: [] };
+
+  for (const [type, resources] of Object.entries(RESOURCES)) {
+    const color = RESOURCE_ICONS[type].color;
+    const icon  = RESOURCE_ICONS[type].icon;
+    let count = 0;
+
+    resources.forEach(r => {
+      if (r.status !== 'libre') return; // only libre
+      count++;
+      const borderColor = STATUS_BORDER[r.status] || color;
+      const mIcon = L.divIcon({
+        html: `<div style="
+          width:28px;height:28px;
+          background:white;
+          border:2.5px solid ${borderColor};
+          border-radius:50%;
+          display:flex;align-items:center;justify-content:center;
+          font-size:14px;
+          box-shadow:0 2px 8px rgba(0,0,0,0.18);
+          cursor:pointer;
+        ">${icon}</div>`,
+        iconSize:[28,28], iconAnchor:[14,14], className:''
+      });
+      const marker = L.marker(r.base, {icon: mIcon})
+        .addTo(map)
+        .bindPopup(`
+          <div style="font-family:'Rajdhani',sans-serif;min-width:140px">
+            <div style="font-size:15px;font-weight:700;color:#0e1c30">${icon} ${r.name}</div>
+            <div style="font-size:11px;color:#7a8eaa;font-family:'Share Tech Mono',monospace;margin-top:2px">${r.detail}</div>
+            <div style="margin-top:6px;display:inline-block;font-size:10px;padding:2px 7px;border-radius:3px;
+              background:rgba(24,122,64,0.10);color:#187a40;border:1px solid rgba(24,122,64,0.3);
+              font-family:'Share Tech Mono',monospace;letter-spacing:1px">LIBRE</div>
+          </div>
+        `);
+      if (!activoLayerVisible[type]) marker.remove();
+      activoMapMarkers[type].push(marker);
+    });
+
+    document.getElementById('count' + type.charAt(0).toUpperCase() + type.slice(1)).textContent = count;
+  }
+}
+
+function toggleActivoLayer(type, visible) {
+  activoLayerVisible[type] = visible;
+  activoMapMarkers[type].forEach(m => {
+    if (visible) m.addTo(map); else map.removeLayer(m);
+  });
+}
+
+</script>
 <style>
   :root {
     --bg: #edf1f7;
@@ -770,6 +851,120 @@
     box-shadow: 0 4px 16px rgba(0,0,0,0.12);
   }
   .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* Leaflet incident popup custom style */
+  .incident-popup .leaflet-popup-content-wrapper {
+    padding: 0;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+    border: 1px solid #d2daea;
+  }
+  .incident-popup .leaflet-popup-content {
+    margin: 0;
+    width: 220px !important;
+  }
+  .incident-popup .leaflet-popup-tip {
+    background: #fff;
+  }
+
+  /* ── ACTIVOS DISPONIBLES DROPDOWN ── */
+  .activos-wrap {
+    position: relative;
+  }
+  .activos-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 210px;
+    background: rgba(255,255,255,0.97);
+    border: 1px solid #d2daea;
+    border-radius: 6px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.13);
+    padding: 10px;
+    display: none;
+    z-index: 2000;
+    backdrop-filter: blur(4px);
+  }
+  .activos-dropdown.open { display: block; }
+  .activos-title {
+    font-size: 9px;
+    letter-spacing: 2px;
+    font-family: 'Share Tech Mono', monospace;
+    color: #7a8eaa;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  .activo-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 4px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: #0e1c30;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.12s;
+    user-select: none;
+  }
+  .activo-item:hover { background: rgba(20,96,200,0.05); }
+  .activo-item input[type="checkbox"] {
+    width: 14px; height: 14px;
+    accent-color: var(--blue);
+    cursor: pointer;
+    flex-shrink: 0;
+    border: none;
+    padding: 0;
+    background: transparent;
+  }
+  .activo-item input[type="checkbox"]:focus { box-shadow: none; }
+  .activo-dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 1.5px solid rgba(0,0,0,0.15);
+  }
+  .activo-count {
+    margin-left: auto;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: #7a8eaa;
+    background: #f4f6fb;
+    border: 1px solid #d2daea;
+    border-radius: 10px;
+    padding: 0 6px;
+    min-width: 20px;
+    text-align: center;
+  }
+  .activos-sep {
+    height: 1px;
+    background: #d2daea;
+    margin: 8px 0;
+  }
+  .activos-legend {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+  }
+  .leg-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-family: 'Share Tech Mono', monospace;
+    color: #7a8eaa;
+  }
+  .leg-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+  }
+  .leg-dot.libre   { background: #187a40; }
+  .leg-dot.ocupado { background: #9a7200; }
+  .leg-dot.enruta  { background: #1460c8; }
+
 </style>
 </head>
 <body>
@@ -920,7 +1115,40 @@
     <div class="map-toolbar" id="mapToolbar">
       <button class="map-btn" id="toolCaller" onclick="setMapMode('caller')">📍 Llamante</button>
       <button class="map-btn" id="toolIncident" onclick="setMapMode('incident')">🚨 Incidencia</button>
-      <button class="map-btn" onclick="setMapMode(null)">✕ Modo Normal</button>
+
+      <!-- Activos disponibles dropdown -->
+      <div class="activos-wrap" id="activosWrap">
+        <button class="map-btn" id="toolActivos" onclick="toggleActivos(event)">
+          🟢 Activos Disponibles ▾
+        </button>
+        <div class="activos-dropdown" id="activosDropdown">
+          <div class="activos-title">FILTRAR ACTIVOS</div>
+          <label class="activo-item">
+            <input type="checkbox" checked onchange="toggleActivoLayer('ambulancias', this.checked)">
+            <span class="activo-dot" style="background:#187a40"></span>
+            🚑 Ambulancias
+            <span class="activo-count" id="countAmbulancias">0</span>
+          </label>
+          <label class="activo-item">
+            <input type="checkbox" checked onchange="toggleActivoLayer('policias', this.checked)">
+            <span class="activo-dot" style="background:#1460c8"></span>
+            🚔 Policías
+            <span class="activo-count" id="countPolicias">0</span>
+          </label>
+          <label class="activo-item">
+            <input type="checkbox" checked onchange="toggleActivoLayer('bomberos', this.checked)">
+            <span class="activo-dot" style="background:#c84a10"></span>
+            🚒 Bomberos
+            <span class="activo-count" id="countBomberos">0</span>
+          </label>
+          <div class="activos-sep"></div>
+          <div class="activos-legend">
+            <span class="leg-item"><span class="leg-dot libre"></span>Libre</span>
+            <span class="leg-item"><span class="leg-dot ocupado"></span>Ocupado</span>
+            <span class="leg-item"><span class="leg-dot enruta"></span>En ruta</span>
+          </div>
+        </div>
+      </div>
     </div>
     <div id="map"></div>
   </div>
@@ -1053,7 +1281,30 @@ function addIncidenceMarker(lat, lng) {
 
   const marker = L.marker([lat, lng], {icon: makeIncidentIcon()})
     .addTo(map)
-    .bindPopup(`<b style="color:#c0271e">🚨 ${label}</b><br>${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+    .bindPopup(`
+      <div style="width:220px;font-family:'Rajdhani',sans-serif;overflow:hidden;border-radius:4px">
+        <div style="position:relative;height:110px;overflow:hidden;margin:-1px -1px 0 -1px">
+          <img
+            src="https://luciamartinezl03-cmd.github.io/centro_gestion_112/tibidabo.png"
+            style="width:100%;height:110px;object-fit:cover;display:block"
+            alt="Tibidabo"
+          />
+          <div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(0,0,0,0.55) 100%)"></div>
+          <div style="position:absolute;bottom:6px;left:8px;color:white;font-size:13px;font-weight:700;letter-spacing:1px;text-shadow:0 1px 3px rgba(0,0,0,0.8)">
+            🚨 INCIDÈNCIA ACTIVA
+          </div>
+        </div>
+        <div style="padding:8px 10px;background:#fff;border-top:2px solid #c0271e">
+          <div style="font-size:15px;font-weight:700;color:#0e1c30;margin-bottom:4px">${label}</div>
+          <div style="font-size:11px;color:#7a8eaa;font-family:'Share Tech Mono',monospace">
+            LAT ${lat.toFixed(5)} &nbsp;|&nbsp; LNG ${lng.toFixed(5)}
+          </div>
+          <div style="font-size:11px;color:#7a8eaa;font-family:'Share Tech Mono',monospace;margin-top:2px">
+            📍 Tibidabo · Vallvidrera · Barcelona
+          </div>
+        </div>
+      </div>
+    `, {maxWidth: 240, className: 'incident-popup'});
 
   marker.on('click', () => selectIncidence(idx));
 
@@ -1478,6 +1729,87 @@ function showToast(msg, isError = false) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
 }
+
+// ────────────────────────── ACTIVOS DISPONIBLES
+let activosOpen = false;
+let activoMapMarkers = { ambulancias: [], policias: [], bomberos: [] };
+let activoLayerVisible = { ambulancias: true, policias: true, bomberos: true };
+
+const STATUS_BORDER = { libre: '#187a40', ocupado: '#9a7200', 'en-ruta': '#1460c8' };
+
+function toggleActivos(e) {
+  e.stopPropagation();
+  activosOpen = !activosOpen;
+  document.getElementById('activosDropdown').classList.toggle('open', activosOpen);
+  if (activosOpen) {
+    renderActivosOnMap();
+    setTimeout(() => document.addEventListener('click', activosOutside), 10);
+  } else {
+    document.removeEventListener('click', activosOutside);
+  }
+}
+
+function activosOutside(e) {
+  if (!document.getElementById('activosWrap').contains(e.target)) {
+    activosOpen = false;
+    document.getElementById('activosDropdown').classList.remove('open');
+    document.removeEventListener('click', activosOutside);
+  }
+}
+
+function renderActivosOnMap() {
+  // Clear existing activo markers
+  Object.values(activoMapMarkers).flat().forEach(m => map.removeLayer(m));
+  activoMapMarkers = { ambulancias: [], policias: [], bomberos: [] };
+
+  for (const [type, resources] of Object.entries(RESOURCES)) {
+    const color = RESOURCE_ICONS[type].color;
+    const icon  = RESOURCE_ICONS[type].icon;
+    let count = 0;
+
+    resources.forEach(r => {
+      if (r.status !== 'libre') return; // only libre
+      count++;
+      const borderColor = STATUS_BORDER[r.status] || color;
+      const mIcon = L.divIcon({
+        html: `<div style="
+          width:28px;height:28px;
+          background:white;
+          border:2.5px solid ${borderColor};
+          border-radius:50%;
+          display:flex;align-items:center;justify-content:center;
+          font-size:14px;
+          box-shadow:0 2px 8px rgba(0,0,0,0.18);
+          cursor:pointer;
+        ">${icon}</div>`,
+        iconSize:[28,28], iconAnchor:[14,14], className:''
+      });
+      const marker = L.marker(r.base, {icon: mIcon})
+        .addTo(map)
+        .bindPopup(`
+          <div style="font-family:'Rajdhani',sans-serif;min-width:140px">
+            <div style="font-size:15px;font-weight:700;color:#0e1c30">${icon} ${r.name}</div>
+            <div style="font-size:11px;color:#7a8eaa;font-family:'Share Tech Mono',monospace;margin-top:2px">${r.detail}</div>
+            <div style="margin-top:6px;display:inline-block;font-size:10px;padding:2px 7px;border-radius:3px;
+              background:rgba(24,122,64,0.10);color:#187a40;border:1px solid rgba(24,122,64,0.3);
+              font-family:'Share Tech Mono',monospace;letter-spacing:1px">LIBRE</div>
+          </div>
+        `);
+      if (!activoLayerVisible[type]) marker.remove();
+      activoMapMarkers[type].push(marker);
+    });
+
+    document.getElementById('count' + type.charAt(0).toUpperCase() + type.slice(1)).textContent = count;
+  }
+}
+
+function toggleActivoLayer(type, visible) {
+  activoLayerVisible[type] = visible;
+  activoMapMarkers[type].forEach(m => {
+    if (visible) m.addTo(map); else map.removeLayer(m);
+  });
+}
+
 </script>
 </body>
 </html>
