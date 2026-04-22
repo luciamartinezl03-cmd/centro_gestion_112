@@ -1,0 +1,1483 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Centro de Gestión 112</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --bg: #edf1f7;
+    --panel: #ffffff;
+    --panel2: #f4f6fb;
+    --border: #d2daea;
+    --accent: #c0271e;
+    --accent2: #e05c20;
+    --blue: #1460c8;
+    --cyan: #007ba8;
+    --green: #187a40;
+    --yellow: #9a7200;
+    --text: #2c3a52;
+    --text-dim: #7a8eaa;
+    --text-bright: #0e1c30;
+    --glow: rgba(20,96,200,0.10);
+    --glow-red: rgba(192,39,30,0.12);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    font-family: 'Rajdhani', sans-serif;
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+
+
+  /* HEADER */
+  header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+  }
+  header::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), var(--blue), transparent); opacity:0.5;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .logo-badge {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    font-weight: bold;
+    color: white;
+    box-shadow: 0 2px 8px rgba(192,39,30,0.25);
+  }
+  .logo-text {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--text-bright);
+  }
+  .logo-sub {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .header-status {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+  }
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text-dim);
+  }
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+  .status-dot.red { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .clock {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 18px;
+    color: var(--cyan);
+    letter-spacing: 2px;
+  }
+
+  /* ── TETRA NETWORK PANEL ── */
+  .tetra-wrapper {
+    position: relative;
+  }
+  .tetra-trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    transition: border-color 0.2s, background 0.2s;
+    user-select: none;
+  }
+  .tetra-trigger:hover { border-color: var(--border); background: rgba(0,0,0,0.04); }
+  .tetra-label {
+    font-size: 11px;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+  .tetra-overall {
+    font-size: 10px;
+    font-family: 'Share Tech Mono', monospace;
+    padding: 2px 7px;
+    border-radius: 3px;
+    letter-spacing: 1px;
+    font-weight: 600;
+  }
+  .tetra-overall.ok    { background: rgba(24,122,64,0.10); color: var(--green); border: 1px solid rgba(24,122,64,0.3); }
+  .tetra-overall.warn  { background: rgba(154,114,0,0.10); color: var(--yellow); border: 1px solid rgba(154,114,0,0.3); }
+  .tetra-overall.error { background: rgba(192,39,30,0.10); color: var(--accent); border: 1px solid rgba(192,39,30,0.3); }
+  .eye-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-dim);
+    font-size: 16px;
+    line-height: 1;
+    padding: 0 2px;
+    transition: color 0.2s;
+    display: flex; align-items: center;
+  }
+  .eye-btn:hover { color: var(--blue); }
+  .eye-btn.active { color: var(--blue); }
+
+  /* dropdown panel */
+  .tetra-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 560px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,123,168,0.08);
+    z-index: 5000;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(-6px);
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+  }
+  .tetra-panel.open {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: all;
+  }
+  .tetra-panel-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(20,96,200,0.04);
+  }
+  .tetra-panel-title {
+    font-size: 11px;
+    letter-spacing: 3px;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--blue);
+  }
+  .tetra-legend {
+    display: flex;
+    gap: 12px;
+  }
+  .tetra-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text-dim);
+  }
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .tetra-body {
+    display: grid;
+    grid-template-columns: 1fr 200px;
+    gap: 0;
+  }
+  #tetraMap {
+    height: 240px;
+  }
+  .tetra-stats {
+    padding: 12px;
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+  }
+  .tetra-stat-title {
+    font-size: 9px;
+    letter-spacing: 2px;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+  .tetra-base-row {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 6px 8px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+    font-size: 12px;
+  }
+  .tetra-base-row:hover { border-color: var(--cyan); }
+  .tetra-base-row .base-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .tetra-base-row .base-name {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text-bright);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .tetra-base-row .base-status {
+    font-size: 9px;
+    font-family: 'Share Tech Mono', monospace;
+    padding: 1px 5px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+  }
+  .base-status.ok    { background: rgba(24,122,64,0.12); color: var(--green); border: 1px solid rgba(24,122,64,0.25); }
+  .base-status.warn  { background: rgba(154,114,0,0.10); color: var(--yellow); border: 1px solid rgba(154,114,0,0.25); }
+  .base-status.err   { background: rgba(192,39,30,0.10); color: var(--accent); border: 1px solid rgba(192,39,30,0.25); }
+  .tetra-footer {
+    padding: 6px 14px;
+    border-top: 1px solid var(--border);
+    font-size: 10px;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .tetra-refresh {
+    color: var(--blue);
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: opacity 0.2s;
+  }
+  .tetra-refresh:hover { opacity: 0.7; }
+
+  /* MAIN LAYOUT */
+  .main {
+    display: grid;
+    grid-template-columns: 340px 1fr 320px;
+    grid-template-rows: 1fr;
+    height: calc(100vh - 56px);
+    gap: 0;
+  }
+
+  /* PANEL STYLES */
+  .panel {
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .panel-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .panel-title {
+    font-size: 11px;
+    letter-spacing: 3px;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .panel-icon {
+    width: 4px; height: 16px;
+    background: var(--accent);
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .panel-icon.blue { background: var(--blue); }
+  .panel-icon.green { background: var(--green); }
+  .panel-body {
+    padding: 16px;
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .panel-body::-webkit-scrollbar { width: 4px; }
+  .panel-body::-webkit-scrollbar-track { background: transparent; }
+  .panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* FORM ELEMENTS */
+  .field-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    font-family: 'Share Tech Mono', monospace;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+
+  select, input {
+    width: 100%;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text-bright);
+    padding: 10px 12px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    border-radius: 4px;
+    appearance: none;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+  select:focus, input:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 2px rgba(20,96,200,0.15);
+  }
+  .select-wrap {
+    position: relative;
+  }
+  .select-wrap::after {
+    content: '▾';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-dim);
+    pointer-events: none;
+    font-size: 12px;
+  }
+
+  /* INCIDENT TYPE BADGES */
+  .incident-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    margin-top: 8px;
+  }
+  .badge-fire { background: rgba(192,39,30,0.10); color: var(--accent); border: 1px solid rgba(192,39,30,0.30); }
+  .badge-medical { background: rgba(24,122,64,0.09); color: var(--green); border: 1px solid rgba(24,122,64,0.25); }
+  .badge-accident { background: rgba(154,114,0,0.09); color: var(--yellow); border: 1px solid rgba(154,114,0,0.25); }
+  .badge-default { background: rgba(20,96,200,0.09); color: var(--blue); border: 1px solid rgba(20,96,200,0.25); }
+
+  /* COORDS DISPLAY */
+  .coords-box {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px 12px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--cyan);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .coords-label {
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+  }
+  .coords-value { color: var(--cyan); }
+
+  /* AFFECTED COUNT */
+  .count-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .count-btn {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .count-btn:hover { border-color: var(--blue); color: var(--blue); }
+  .count-btn.active { background: rgba(26,140,255,0.15); border-color: var(--blue); color: var(--blue); box-shadow: 0 0 0 2px rgba(20,96,200,0.15); }
+  .count-btn.active.high { background: rgba(232,64,64,0.15); border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 2px rgba(192,39,30,0.15); }
+
+  /* DISPATCH BUTTON */
+  .btn-dispatch {
+    background: var(--accent);
+    border: none;
+    color: white;
+    padding: 14px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    border-radius: 4px;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    box-shadow: 0 2px 12px rgba(192,39,30,0.25);
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-dispatch:hover { background: #a81e16; box-shadow: 0 4px 16px rgba(192,39,30,0.35); }
+  .btn-dispatch:active { transform: scale(0.98); }
+  .btn-dispatch::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    transition: left 0.5s;
+  }
+  .btn-dispatch:hover::before { left: 100%; }
+
+  /* MAP */
+  #map {
+    width: 100%;
+    height: 100%;
+    background: #e8ecf2;
+  }
+
+  /* RIGHT PANEL - RESOURCES */
+  .right-panel {
+    background: var(--panel);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-left: 1px solid var(--border);
+  }
+
+  .radius-control {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .radius-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  input[type="range"] {
+    flex: 1;
+    accent-color: var(--blue);
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    height: 20px;
+  }
+  input[type="range"]:focus { box-shadow: none; }
+  .radius-val {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    color: var(--blue);
+    min-width: 48px;
+    text-align: right;
+  }
+
+  .resource-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .resource-list::-webkit-scrollbar { width: 4px; }
+  .resource-list::-webkit-scrollbar-track { background: transparent; }
+  .resource-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .resource-section {
+    margin-bottom: 8px;
+  }
+  .resource-section-title {
+    font-size: 10px;
+    letter-spacing: 2px;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text-dim);
+    padding: 6px 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .resource-section-title span {
+    flex: 1;
+    border-bottom: 1px solid var(--border);
+    margin-left: 4px;
+  }
+  .count-badge {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 2px;
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  .resource-card {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .resource-card:hover { border-color: var(--blue); background: rgba(20,96,200,0.05); }
+  .resource-card.dispatched { border-color: var(--green); background: rgba(24,122,64,0.05); }
+  .resource-card.dispatched::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--green);
+  }
+  .resource-card.selected::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--blue);
+  }
+
+  .res-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .res-info { flex: 1; min-width: 0; }
+  .res-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-bright);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .res-detail {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .res-dist {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .res-status {
+    font-size: 9px;
+    padding: 2px 5px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .res-status.libre { background: rgba(24,122,64,0.10); color: var(--green); border: 1px solid rgba(24,122,64,0.30); }
+  .res-status.ocupado { background: rgba(154,114,0,0.10); color: var(--yellow); border: 1px solid rgba(154,114,0,0.30); }
+  .res-status.en-ruta { background: rgba(20,96,200,0.10); color: var(--blue); border: 1px solid rgba(20,96,200,0.30); }
+
+  .no-resources {
+    padding: 24px;
+    text-align: center;
+    color: var(--text-dim);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+
+  /* MAP MARKER MODES */
+  .map-toolbar {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: flex;
+    gap: 6px;
+  }
+  .map-btn {
+    background: rgba(255,255,255,0.95);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 14px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    backdrop-filter: blur(4px);
+  }
+  .map-btn:hover { border-color: var(--blue); color: var(--blue); }
+  .map-btn.active-caller { border-color: var(--cyan); color: var(--cyan); background: rgba(0,123,168,0.10); }
+  .map-btn.active-incident { border-color: var(--accent); color: var(--accent); background: rgba(232,64,64,0.1); }
+
+  /* Separator */
+  .sep {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 0;
+  }
+
+  /* Incident input mode highlight */
+  .incident-coords-box {
+    cursor: pointer;
+    transition: border-color 0.2s;
+    position: relative;
+  }
+  .incident-coords-box:hover {
+    border-color: var(--accent);
+  }
+  .incident-coords-box.selecting {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(192,39,30,0.15);
+  }
+  .incident-coords-box .pick-hint {
+    font-size: 9px;
+    color: var(--accent);
+    letter-spacing: 1px;
+    margin-top: 4px;
+  }
+
+  /* Incidence marker list */
+  .incidence-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .incidence-item {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.15s;
+  }
+  .incidence-item:hover { border-color: var(--accent); }
+  .incidence-item.selected { border-color: var(--accent); background: rgba(192,39,30,0.06); }
+  .inc-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+    flex-shrink: 0;
+  }
+  .inc-type {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-bright);
+    flex: 1;
+  }
+  .inc-coords {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+  .inc-remove {
+    color: var(--text-dim);
+    font-size: 14px;
+    padding: 2px 4px;
+    cursor: pointer;
+    transition: color 0.15s;
+  }
+  .inc-remove:hover { color: var(--accent); }
+
+  /* Map container wrapper */
+  .map-wrap {
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+  }
+  .map-wrap #map {
+    height: 100%;
+    width: 100%;
+  }
+
+  /* Notification toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--panel);
+    border: 1px solid var(--green);
+    color: var(--green);
+    padding: 10px 20px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 1px;
+    border-radius: 4px;
+    z-index: 9999;
+    transition: transform 0.3s;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-badge">112</div>
+    <div>
+      <div class="logo-text">CENTRO DE GESTIÓN</div>
+      <div class="logo-sub">SISTEMA DE COORDINACIÓN DE EMERGENCIAS</div>
+    </div>
+  </div>
+  <div class="header-status">
+    <div class="status-item"><div class="status-dot"></div> SISTEMA OPERATIVO</div>
+    <div class="status-item"><div class="status-dot red"></div> <span id="activeCount">0</span> INCIDENCIAS ACTIVAS</div>
+    <!-- TETRA NETWORK PANEL -->
+    <div class="tetra-wrapper" id="tetraWrapper">
+      <div class="tetra-trigger" onclick="toggleTetra()">
+        <div class="tetra-label">RED TETRA</div>
+        <div class="tetra-overall ok" id="tetraOverall">OPERATIVA</div>
+        <button class="eye-btn" id="tetraEye" title="Ver cobertura TETRA">
+          <svg id="eyeOpen" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          <svg id="eyeClosed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+            <line x1="1" y1="1" x2="23" y2="23"/>
+          </svg>
+        </button>
+      </div>
+      <div class="tetra-panel" id="tetraPanel">
+        <div class="tetra-panel-header">
+          <div class="tetra-panel-title">▸ COBERTURA RED TETRA — BASES ACTIVAS</div>
+          <div class="tetra-legend">
+            <div class="tetra-legend-item"><div class="legend-dot" style="background:#00e676;box-shadow:0 0 6px #00e676"></div>Disponible</div>
+            <div class="tetra-legend-item"><div class="legend-dot" style="background:#ffd600;box-shadow:0 0 6px #ffd600"></div>Congestionada</div>
+            <div class="tetra-legend-item"><div class="legend-dot" style="background:#e84040;box-shadow:0 0 6px #e84040"></div>Sin cobertura</div>
+          </div>
+        </div>
+        <div class="tetra-body">
+          <div id="tetraMap"></div>
+          <div class="tetra-stats" id="tetraStats"></div>
+        </div>
+        <div class="tetra-footer">
+          <span>Última actualización: <span id="tetraTime">—</span></span>
+          <span class="tetra-refresh" onclick="refreshTetra()">↺ ACTUALIZAR</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="clock" id="clock">00:00:00</div>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- LEFT PANEL: Llamada entrante -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-icon"></div>
+      <div class="panel-title">Llamada Entrante</div>
+    </div>
+    <div class="panel-body">
+
+      <!-- Tipo de incidente -->
+      <div>
+        <div class="field-label">Tipo de Incidente</div>
+        <div class="select-wrap">
+          <select id="incidentType" onchange="updateIncidentBadge()">
+            <option value="">— Seleccionar —</option>
+            <optgroup label="🔥 Incendios">
+              <option value="incendio_forestal">Incendio Forestal</option>
+              <option value="incendio_urbano">Incendio Urbano</option>
+              <option value="incendio_industrial">Incendio Industrial</option>
+              <option value="incendio_vehiculo">Incendio de Vehículo</option>
+            </optgroup>
+            <optgroup label="🚑 Emergencias Médicas">
+              <option value="desmayo">Desmayo / Pérdida de consciencia</option>
+              <option value="infarto">Infarto / Parada cardiorrespiratoria</option>
+              <option value="accidente_trafico">Accidente de Tráfico</option>
+              <option value="intoxicacion">Intoxicación</option>
+              <option value="caida">Caída / Traumatismo</option>
+            </optgroup>
+            <optgroup label="⚠️ Otros">
+              <option value="derrumbe">Derrumbe / Colapso estructural</option>
+              <option value="inundacion">Inundación</option>
+              <option value="fuga_gas">Fuga de Gas</option>
+              <option value="explosion">Explosión</option>
+              <option value="pelea">Altercado / Pelea</option>
+              <option value="robo">Robo / Atraco</option>
+            </optgroup>
+          </select>
+        </div>
+        <div id="incidentBadge"></div>
+      </div>
+
+      <!-- Personas afectadas -->
+      <div>
+        <div class="field-label">Personas Afectadas</div>
+        <div class="count-grid">
+          <button class="count-btn" onclick="setAffected(this,'1')">1 persona</button>
+          <button class="count-btn" onclick="setAffected(this,'5+')">Más de 5</button>
+          <button class="count-btn" onclick="setAffected(this,'20+')">Más de 20</button>
+          <button class="count-btn high" onclick="setAffected(this,'100+')">Más de 100</button>
+        </div>
+      </div>
+
+      <!-- Coordenadas llamante -->
+      <div>
+        <div class="field-label">Ubicación del Llamante</div>
+        <div class="coords-box">
+          <div class="coords-label">CALLER POSITION</div>
+          <div class="coords-value" id="callerLat">—</div>
+          <div class="coords-value" id="callerLng">—</div>
+        </div>
+        <div style="margin-top:6px">
+          <button class="map-btn" id="btnCaller" onclick="setMapMode('caller')" style="width:100%;text-align:center">
+            📍 Marcar en Mapa
+          </button>
+        </div>
+      </div>
+
+      <!-- Incidencias registradas -->
+      <div>
+        <div class="field-label">Incidencias en Mapa</div>
+        <div id="incidenceList" class="incidence-list">
+          <div style="font-size:11px; color:var(--text-dim); font-family:'Share Tech Mono',monospace; padding:8px 0;">
+            Sin incidencias registradas
+          </div>
+        </div>
+        <div style="margin-top:8px">
+          <button class="map-btn" id="btnIncident" onclick="setMapMode('incident')" style="width:100%;text-align:center;margin-bottom:6px">
+            🚨 Añadir Incidencia
+          </button>
+        </div>
+      </div>
+
+      <div class="sep"></div>
+
+      <button class="btn-dispatch" onclick="dispatchAlert()">⚡ DESPACHAR EMERGENCIA</button>
+    </div>
+  </div>
+
+  <!-- CENTRO: Mapa -->
+  <div class="map-wrap" style="position:relative">
+    <div class="map-toolbar" id="mapToolbar">
+      <button class="map-btn" id="toolCaller" onclick="setMapMode('caller')">📍 Llamante</button>
+      <button class="map-btn" id="toolIncident" onclick="setMapMode('incident')">🚨 Incidencia</button>
+      <button class="map-btn" onclick="setMapMode(null)">✕ Modo Normal</button>
+    </div>
+    <div id="map"></div>
+  </div>
+
+  <!-- RIGHT PANEL: Recursos -->
+  <div class="right-panel">
+    <div class="panel-header">
+      <div class="panel-icon green"></div>
+      <div class="panel-title">Recursos Cercanos</div>
+    </div>
+    <div class="radius-control">
+      <div class="field-label">Radio de búsqueda</div>
+      <div class="radius-row">
+        <input type="range" id="radiusSlider" min="1" max="50" value="10" oninput="updateRadius(this.value)">
+        <div class="radius-val"><span id="radiusVal">10</span> km</div>
+      </div>
+      <div style="font-size:11px;color:var(--text-dim);font-family:'Share Tech Mono',monospace">
+        Referencia: <span id="refPoint" style="color:var(--blue)">Sin incidencia seleccionada</span>
+      </div>
+    </div>
+    <div class="resource-list" id="resourceList">
+      <div class="no-resources">Selecciona una incidencia<br>para ver recursos cercanos</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ────────────────────────── CLOCK
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    String(now.getHours()).padStart(2,'0') + ':' +
+    String(now.getMinutes()).padStart(2,'0') + ':' +
+    String(now.getSeconds()).padStart(2,'0');
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ────────────────────────── STATE
+let mapMode = null; // 'caller' | 'incident' | null
+let callerMarker = null;
+let incidentMarkers = [];
+let incidences = [];
+let selectedIncidenceIdx = null;
+let affectedCount = null;
+let resourceCircle = null;
+let resourceMarkers = [];
+
+// ────────────────────────── MAP
+const map = L.map('map', {
+  center: [41.4185, 2.1285], // Barcelona - Tibidabo
+  zoom: 13,
+  zoomControl: true
+});
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© OpenStreetMap © CARTO',
+  maxZoom: 19
+}).addTo(map);
+
+// Map click handler
+map.on('click', function(e) {
+  const {lat, lng} = e.latlng;
+  if (mapMode === 'caller') {
+    placeCallerMarker(lat, lng);
+    setMapMode(null);
+  } else if (mapMode === 'incident') {
+    addIncidenceMarker(lat, lng);
+    setMapMode(null);
+  }
+});
+
+// cursor
+map.getContainer().style.cursor = 'default';
+
+function setMapMode(mode) {
+  mapMode = mode;
+  const c = map.getContainer();
+  const btnCaller = document.getElementById('btnCaller');
+  const btnIncident = document.getElementById('btnIncident');
+  const toolCaller = document.getElementById('toolCaller');
+  const toolIncident = document.getElementById('toolIncident');
+
+  [btnCaller, toolCaller].forEach(b => { b.classList.remove('active-caller'); });
+  [btnIncident, toolIncident].forEach(b => { b.classList.remove('active-incident'); });
+
+  if (mode === 'caller') {
+    c.style.cursor = 'crosshair';
+    [btnCaller, toolCaller].forEach(b => b.classList.add('active-caller'));
+    showToast('📍 Clic en el mapa para marcar la ubicación del llamante');
+  } else if (mode === 'incident') {
+    c.style.cursor = 'crosshair';
+    [btnIncident, toolIncident].forEach(b => b.classList.add('active-incident'));
+    showToast('🚨 Clic en el mapa para añadir una incidencia');
+  } else {
+    c.style.cursor = 'default';
+  }
+}
+
+// ────────────────────────── CALLER MARKER
+const callerIcon = L.divIcon({
+  html: `<div style="width:14px;height:14px;background:#007ba8;border:2px solid #fff;border-radius:50%;box-shadow:0 0 8px rgba(0,123,168,0.5)"></div>`,
+  iconSize: [14,14], iconAnchor: [7,7], className: ''
+});
+
+function placeCallerMarker(lat, lng) {
+  if (callerMarker) map.removeLayer(callerMarker);
+  callerMarker = L.marker([lat, lng], {icon: callerIcon})
+    .addTo(map)
+    .bindPopup(`<b style="color:#007ba8">Llamante</b><br>${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+  document.getElementById('callerLat').textContent = 'LAT: ' + lat.toFixed(6);
+  document.getElementById('callerLng').textContent = 'LNG: ' + lng.toFixed(6);
+}
+
+// ────────────────────────── INCIDENT MARKERS
+function makeIncidentIcon() {
+  return L.divIcon({
+    html: `<div style="width:16px;height:16px;background:#c0271e;border:2px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(192,39,30,0.5);animation:ping 1.5s infinite"></div>`,
+    iconSize: [16,16], iconAnchor: [8,8], className: ''
+  });
+}
+
+function addIncidenceMarker(lat, lng) {
+  const type = document.getElementById('incidentType');
+  const label = type.options[type.selectedIndex]?.text || 'Incidencia';
+  const idx = incidences.length;
+
+  const marker = L.marker([lat, lng], {icon: makeIncidentIcon()})
+    .addTo(map)
+    .bindPopup(`<b style="color:#c0271e">🚨 ${label}</b><br>${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+
+  marker.on('click', () => selectIncidence(idx));
+
+  incidences.push({lat, lng, label, marker});
+  incidentMarkers.push(marker);
+  renderIncidenceList();
+  selectIncidence(idx);
+  document.getElementById('activeCount').textContent = incidences.length;
+}
+
+function selectIncidence(idx) {
+  selectedIncidenceIdx = idx;
+  const inc = incidences[idx];
+  document.getElementById('refPoint').textContent = `${inc.lat.toFixed(4)}, ${inc.lng.toFixed(4)}`;
+  renderIncidenceList();
+  updateResourceList();
+  map.setView([inc.lat, inc.lng], 13);
+  inc.marker.openPopup();
+}
+
+function removeIncidence(idx) {
+  const inc = incidences[idx];
+  map.removeLayer(inc.marker);
+  incidences.splice(idx, 1);
+  incidentMarkers.splice(idx, 1);
+  if (selectedIncidenceIdx === idx) {
+    selectedIncidenceIdx = null;
+    clearResourceOverlay();
+    document.getElementById('refPoint').textContent = 'Sin incidencia seleccionada';
+    document.getElementById('resourceList').innerHTML = '<div class="no-resources">Selecciona una incidencia<br>para ver recursos cercanos</div>';
+  } else if (selectedIncidenceIdx > idx) {
+    selectedIncidenceIdx--;
+  }
+  document.getElementById('activeCount').textContent = incidences.length;
+  renderIncidenceList();
+}
+
+function renderIncidenceList() {
+  const el = document.getElementById('incidenceList');
+  if (!incidences.length) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--text-dim);font-family:\'Share Tech Mono\',monospace;padding:8px 0">Sin incidencias registradas</div>';
+    return;
+  }
+  el.innerHTML = incidences.map((inc, i) => `
+    <div class="incidence-item ${i === selectedIncidenceIdx ? 'selected' : ''}" onclick="selectIncidence(${i})">
+      <div class="inc-dot"></div>
+      <div class="inc-type">${inc.label}</div>
+      <div class="inc-coords">${inc.lat.toFixed(3)}, ${inc.lng.toFixed(3)}</div>
+      <div class="inc-remove" onclick="event.stopPropagation();removeIncidence(${i})">✕</div>
+    </div>
+  `).join('');
+}
+
+// ────────────────────────── RESOURCES DATA
+const RESOURCES = {
+  ambulancias: [
+    {name:'UVI Móvil 01', detail:'Soporte Vital Avançat', status:'libre', base:[41.4260, 2.1350]},
+    {name:'Ambulància A-12', detail:'Suport Vital Bàsic', status:'ocupado', base:[41.4130, 2.1480]},
+    {name:'UVI Móvil 03', detail:'Soporte Vital Avançat', status:'libre', base:[41.4320, 2.1150]},
+    {name:'Ambulància A-07', detail:'Suport Vital Bàsic', status:'en-ruta', base:[41.4080, 2.1380]},
+    {name:'UVI Móvil 05', detail:'Soporte Vital Avançat', status:'libre', base:[41.4380, 2.1600]},
+  ],
+  policias: [
+    {name:'Mossos d'Esquadra P-23', detail:'Comissaria Sarrià-St.Gervasi', status:'libre', base:[41.4010, 2.1320]},
+    {name:'Guàrdia Urbana GU-08', detail:'Unitat Territori Nord', status:'libre', base:[41.4200, 2.1580]},
+    {name:'Mossos d'Esquadra P-17', detail:'Comissaria Vall d'Hebron', status:'ocupado', base:[41.4290, 2.1490]},
+    {name:'GEO Unitat 2', detail:'Grup Especial Operacions', status:'libre', base:[41.4350, 2.1200]},
+    {name:'Guàrdia Urbana GU-15', detail:'Unitat Forestal', status:'en-ruta', base:[41.4150, 2.1100]},
+  ],
+  bomberos: [
+    {name:'Bombers B-04', detail:'Extinció i Rescat', status:'libre', base:[41.4220, 2.1420]},
+    {name:'Bombers B-09', detail:'Rescat Tècnic Muntanya', status:'libre', base:[41.4060, 2.1250]},
+    {name:'Bombers B-02', detail:'Extinció i Rescat', status:'ocupado', base:[41.4340, 2.1560]},
+    {name:'BRIF Unitat 1', detail:'Brigada Forestal Tibidabo', status:'libre', base:[41.4420, 2.1180]},
+  ]
+};
+
+function dist(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2-lat1)*Math.PI/180;
+  const dLng = (lng2-lng1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+const RESOURCE_ICONS = {
+  ambulancias: {icon:'🚑', color:'#187a40'},
+  policias: {icon:'🚔', color:'#1460c8'},
+  bomberos: {icon:'🚒', color:'#c84a10'}
+};
+
+const STATUS_LABELS = {libre:'LIBRE', ocupado:'OCUPADO', 'en-ruta':'EN RUTA'};
+
+function updateRadius(val) {
+  document.getElementById('radiusVal').textContent = val;
+  if (selectedIncidenceIdx !== null) updateResourceList();
+}
+
+function clearResourceOverlay() {
+  if (resourceCircle) { map.removeLayer(resourceCircle); resourceCircle = null; }
+  resourceMarkers.forEach(m => map.removeLayer(m));
+  resourceMarkers = [];
+}
+
+function updateResourceList() {
+  if (selectedIncidenceIdx === null) return;
+  const inc = incidences[selectedIncidenceIdx];
+  const radius = parseInt(document.getElementById('radiusSlider').value);
+
+  clearResourceOverlay();
+
+  // Draw circle
+  resourceCircle = L.circle([inc.lat, inc.lng], {
+    radius: radius * 1000,
+    color: '#1a8cff',
+    fillColor: '#1a8cff',
+    fillOpacity: 0.04,
+    weight: 1,
+    dashArray: '6 4'
+  }).addTo(map);
+
+  const list = document.getElementById('resourceList');
+  let html = '';
+  let totalFound = 0;
+
+  for (const [type, resources] of Object.entries(RESOURCES)) {
+    const {icon, color} = RESOURCE_ICONS[type];
+    const found = resources
+      .map(r => ({...r, km: dist(inc.lat, inc.lng, r.base[0], r.base[1])}))
+      .filter(r => r.km <= radius)
+      .sort((a,b) => a.km - b.km);
+
+    totalFound += found.length;
+
+    html += `<div class="resource-section">
+      <div class="resource-section-title">
+        ${icon} ${type.toUpperCase()}
+        <span></span>
+        <div class="count-badge">${found.length}</div>
+      </div>`;
+
+    if (!found.length) {
+      html += `<div style="font-size:11px;color:var(--text-dim);font-family:'Share Tech Mono',monospace;padding:4px 8px">Sin ${type} en radio</div>`;
+    } else {
+      found.forEach((r, i) => {
+        // Add map marker
+        const rIcon = L.divIcon({
+          html: `<div style="width:10px;height:10px;background:${color};border:2px solid #fff;border-radius:50%;box-shadow:0 0 8px ${color}"></div>`,
+          iconSize:[10,10], iconAnchor:[5,5], className:''
+        });
+        const rm = L.marker(r.base, {icon: rIcon})
+          .addTo(map)
+          .bindPopup(`<b style="color:${color}">${r.name}</b><br>${r.detail}<br>${r.km.toFixed(1)} km`);
+        resourceMarkers.push(rm);
+
+        html += `<div class="resource-card" onclick="focusResource(${r.base[0]},${r.base[1]})">
+          <div class="res-icon">${icon}</div>
+          <div class="res-info">
+            <div class="res-name">${r.name}</div>
+            <div class="res-detail">${r.detail}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+            <div class="res-status ${r.status}">${STATUS_LABELS[r.status]}</div>
+            <div class="res-dist">${r.km.toFixed(1)} km</div>
+          </div>
+        </div>`;
+      });
+    }
+    html += `</div>`;
+  }
+
+  if (totalFound === 0) {
+    list.innerHTML = `<div class="no-resources">Sin recursos en un radio de ${radius} km</div>`;
+  } else {
+    list.innerHTML = html;
+  }
+}
+
+function focusResource(lat, lng) {
+  map.setView([lat, lng], 15);
+}
+
+// ────────────────────────── INCIDENT BADGE
+const BADGE_MAP = {
+  incendio_forestal: {cls:'badge-fire', label:'🔥 INCENDIO FORESTAL'},
+  incendio_urbano: {cls:'badge-fire', label:'🔥 INCENDIO URBANO'},
+  incendio_industrial: {cls:'badge-fire', label:'🔥 INCENDIO INDUSTRIAL'},
+  incendio_vehiculo: {cls:'badge-fire', label:'🔥 INCENDIO VEHÍCULO'},
+  desmayo: {cls:'badge-medical', label:'🚑 DESMAYO'},
+  infarto: {cls:'badge-medical', label:'🚑 INFARTO / PCR'},
+  accidente_trafico: {cls:'badge-accident', label:'⚠️ ACCIDENTE TRÁFICO'},
+  intoxicacion: {cls:'badge-medical', label:'🚑 INTOXICACIÓN'},
+  caida: {cls:'badge-medical', label:'🚑 TRAUMATISMO'},
+  derrumbe: {cls:'badge-accident', label:'⚠️ DERRUMBE'},
+  inundacion: {cls:'badge-accident', label:'⚠️ INUNDACIÓN'},
+  fuga_gas: {cls:'badge-accident', label:'⚠️ FUGA DE GAS'},
+  explosion: {cls:'badge-fire', label:'🔥 EXPLOSIÓN'},
+  pelea: {cls:'badge-default', label:'🚔 ALTERCADO'},
+  robo: {cls:'badge-default', label:'🚔 ROBO / ATRACO'},
+};
+
+function updateIncidentBadge() {
+  const val = document.getElementById('incidentType').value;
+  const el = document.getElementById('incidentBadge');
+  if (!val || !BADGE_MAP[val]) { el.innerHTML = ''; return; }
+  const {cls, label} = BADGE_MAP[val];
+  el.innerHTML = `<div class="incident-badge ${cls}">${label}</div>`;
+}
+
+// ────────────────────────── AFFECTED COUNT
+function setAffected(btn, val) {
+  document.querySelectorAll('.count-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  affectedCount = val;
+}
+
+// ────────────────────────── DISPATCH
+function dispatchAlert() {
+  const type = document.getElementById('incidentType').value;
+  if (!type) { showToast('⚠️ Selecciona un tipo de incidente', true); return; }
+  if (!incidences.length) { showToast('⚠️ Añade al menos una incidencia en el mapa', true); return; }
+  if (!affectedCount) { showToast('⚠️ Selecciona el número de personas afectadas', true); return; }
+  showToast('✅ EMERGENCIA DESPACHADA — Recursos asignados', false);
+}
+
+
+// ── DEMO: pre-load example incident from the screenshot area ──
+window.addEventListener('load', function() {
+  setTimeout(function() {
+    // Observatori Fabra / Tibidabo area - matching the screenshot
+    document.getElementById('incidentType').value = 'incendio_forestal';
+    updateIncidentBadge();
+    addIncidenceMarker(41.4183, 2.1246);
+    map.setView([41.4183, 2.1246], 14);
+  }, 400);
+});
+
+// ────────────────────────── TETRA NETWORK
+let tetraOpen = false;
+let tetraMap = null;
+let tetraLayers = [];
+
+const TETRA_BASES = [
+  {id:'T01', name:'Base TETRA Tibidabo',          lat:41.4219, lng:2.1186, status:'ok',   load:22},
+  {id:'T02', name:'Base TETRA Vall d'Hebron',    lat:41.4295, lng:2.1488, status:'ok',   load:38},
+  {id:'T03', name:'Base TETRA Sarrià',            lat:41.3990, lng:2.1204, status:'warn', load:74},
+  {id:'T04', name:'Base TETRA Gràcia',            lat:41.4040, lng:2.1570, status:'ok',   load:29},
+  {id:'T05', name:'Base TETRA Nou Barris',        lat:41.4420, lng:2.1730, status:'err',  load:100},
+  {id:'T06', name:'Base TETRA Sant Andreu',       lat:41.4360, lng:2.1960, status:'ok',   load:45},
+  {id:'T07', name:'Base TETRA Horta',             lat:41.4380, lng:2.1620, status:'warn', load:80},
+  {id:'T08', name:'Base TETRA Les Corts',         lat:41.3850, lng:2.1280, status:'ok',   load:31},
+  {id:'T09', name:'Base TETRA Eixample Nord',     lat:41.4000, lng:2.1580, status:'ok',   load:52},
+  {id:'T10', name:'Base TETRA Collserola',        lat:41.4180, lng:2.0980, status:'err',  load:100},
+];
+
+const TETRA_COLOR = {ok:'#187a40', warn:'#9a7200', err:'#c0271e'};
+const TETRA_STATUS_LABEL = {ok:'LIBRE', warn:'CONGESTIONADA', err:'SIN COBERTURA'};
+const TETRA_RADIUS_KM = 12; // coverage radius per base
+
+function toggleTetra() {
+  tetraOpen = !tetraOpen;
+  document.getElementById('tetraPanel').classList.toggle('open', tetraOpen);
+  document.getElementById('eyeOpen').style.display  = tetraOpen ? 'none' : 'block';
+  document.getElementById('eyeClosed').style.display = tetraOpen ? 'block' : 'none';
+  document.getElementById('tetraEye').classList.toggle('active', tetraOpen);
+
+  if (tetraOpen && !tetraMap) initTetraMap();
+
+  // Close when clicking outside
+  if (tetraOpen) {
+    setTimeout(() => document.addEventListener('click', tetraOutsideClick), 10);
+  } else {
+    document.removeEventListener('click', tetraOutsideClick);
+  }
+}
+
+function tetraOutsideClick(e) {
+  if (!document.getElementById('tetraWrapper').contains(e.target)) {
+    tetraOpen = false;
+    document.getElementById('tetraPanel').classList.remove('open');
+    document.getElementById('eyeOpen').style.display  = 'block';
+    document.getElementById('eyeClosed').style.display = 'none';
+    document.getElementById('tetraEye').classList.remove('active');
+    document.removeEventListener('click', tetraOutsideClick);
+  }
+}
+
+function initTetraMap() {
+  tetraMap = L.map('tetraMap', {
+    center: [41.4200, 2.1500],
+    zoom: 10,
+    zoomControl: false,
+    attributionControl: false
+  });
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19
+  }).addTo(tetraMap);
+
+  renderTetraLayers();
+  renderTetraStats();
+  updateTetraTime();
+
+  setTimeout(() => tetraMap.invalidateSize(), 50);
+}
+
+function renderTetraLayers() {
+  tetraLayers.forEach(l => tetraMap.removeLayer(l));
+  tetraLayers = [];
+
+  TETRA_BASES.forEach(base => {
+    const color = TETRA_COLOR[base.status];
+
+    // Coverage circle
+    const circle = L.circle([base.lat, base.lng], {
+      radius: TETRA_RADIUS_KM * 1000,
+      color: color,
+      fillColor: color,
+      fillOpacity: base.status === 'err' ? 0.06 : 0.10,
+      weight: 1.5,
+      dashArray: base.status === 'err' ? '5 5' : null,
+      opacity: 0.7
+    }).addTo(tetraMap)
+      .bindPopup(`
+        <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:${color}">
+          <b>${base.id}</b> — ${base.name}<br>
+          Estado: <b>${TETRA_STATUS_LABEL[base.status]}</b><br>
+          Carga: ${base.load}%
+        </div>
+      `);
+
+    // Tower marker
+    const towerIcon = L.divIcon({
+      html: `<div style="
+        width:12px;height:12px;
+        background:${color};
+        border:2px solid rgba(255,255,255,0.8);
+        border-radius:50%;
+        box-shadow:0 0 8px ${color},0 0 2px rgba(0,0,0,0.15);
+      "></div>`,
+      iconSize:[12,12], iconAnchor:[6,6], className:''
+    });
+
+    const marker = L.marker([base.lat, base.lng], {icon: towerIcon})
+      .addTo(tetraMap)
+      .bindPopup(`
+        <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:${color}">
+          <b>${base.id}</b> — ${base.name}<br>
+          Estado: <b>${TETRA_STATUS_LABEL[base.status]}</b><br>
+          Carga canal: ${base.load}%
+        </div>
+      `);
+
+    tetraLayers.push(circle, marker);
+  });
+}
+
+function renderTetraStats() {
+  const el = document.getElementById('tetraStats');
+  const ok   = TETRA_BASES.filter(b => b.status === 'ok').length;
+  const warn = TETRA_BASES.filter(b => b.status === 'warn').length;
+  const err  = TETRA_BASES.filter(b => b.status === 'err').length;
+
+  // Update overall badge
+  const overall = document.getElementById('tetraOverall');
+  if (err > 0) {
+    overall.className = 'tetra-overall error';
+    overall.textContent = `${err} FALLO${err>1?'S':''}`;
+  } else if (warn > 0) {
+    overall.className = 'tetra-overall warn';
+    overall.textContent = `${warn} CONGESTIONADA${warn>1?'S':''}`;
+  } else {
+    overall.className = 'tetra-overall ok';
+    overall.textContent = 'OPERATIVA';
+  }
+
+  el.innerHTML = `
+    <div class="tetra-stat-title">BASES (${TETRA_BASES.length})</div>
+    ${TETRA_BASES.map(b => `
+      <div class="tetra-base-row" onclick="focusTetraBase(${b.lat},${b.lng})">
+        <div class="base-dot" style="background:${TETRA_COLOR[b.status]};box-shadow:0 0 5px ${TETRA_COLOR[b.status]}"></div>
+        <div class="base-name">${b.id} — ${b.name.replace('Base TETRA ','')}</div>
+        <div class="base-status ${b.status}">${b.load}%</div>
+      </div>
+    `).join('')}
+  `;
+}
+
+function focusTetraBase(lat, lng) {
+  tetraMap.setView([lat, lng], 11);
+}
+
+function updateTetraTime() {
+  const now = new Date();
+  document.getElementById('tetraTime').textContent =
+    String(now.getHours()).padStart(2,'0') + ':' +
+    String(now.getMinutes()).padStart(2,'0') + ':' +
+    String(now.getSeconds()).padStart(2,'0');
+}
+
+function refreshTetra() {
+  // Simulate status change for demo
+  TETRA_BASES.forEach(b => {
+    const r = Math.random();
+    if (r < 0.6) { b.status = 'ok'; b.load = Math.floor(Math.random()*50+10); }
+    else if (r < 0.85) { b.status = 'warn'; b.load = Math.floor(Math.random()*20+70); }
+    else { b.status = 'err'; b.load = 100; }
+  });
+  if (tetraMap) renderTetraLayers();
+  renderTetraStats();
+  updateTetraTime();
+  showToast('↺ Red TETRA actualizada', false);
+}
+
+// ────────────────────────── TOAST
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.borderColor = isError ? 'var(--accent)' : 'var(--green)';
+  t.style.color = isError ? 'var(--accent)' : 'var(--green)';
+  t.style.boxShadow = isError ? '0 0 20px rgba(232,64,64,0.2)' : '0 0 20px rgba(0,230,118,0.2)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
