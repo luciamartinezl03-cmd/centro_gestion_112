@@ -6,7 +6,210 @@
 <title>Centro de Gestión 112</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+// ────────────────────────── PANEL TABS (Trànsit / Meteocat)
+const panelState = { transit: false, meteocat: false };
+const panelMaps  = { transit: null,  meteocat: null  };
+const panelLayers= { transit: [],    meteocat: []    };
+
+function togglePanelTab(name) {
+  // Close all others first
+  Object.keys(panelState).forEach(k => {
+    if (k !== name && panelState[k]) {
+      panelState[k] = false;
+      document.getElementById(k + 'Panel').classList.remove('open');
+      const w = document.getElementById(k + 'Wrapper');
+      if (w) w.querySelector('.panel-tab-trigger').classList.remove('active');
+    }
+  });
+  // Also close TETRA if open
+  if (name !== 'tetra' && tetraOpen) toggleTetra();
+
+  panelState[name] = !panelState[name];
+  const panel = document.getElementById(name + 'Panel');
+  panel.classList.toggle('open', panelState[name]);
+  const wrapper = document.getElementById(name + 'Wrapper');
+  if (wrapper) wrapper.querySelector('.panel-tab-trigger').classList.toggle('active', panelState[name]);
+
+  if (panelState[name]) {
+    if (!panelMaps[name]) initPanelMap(name);
+    else setTimeout(() => panelMaps[name].invalidateSize(), 360);
+    if (name === 'transit') updateTransitTime();
+    if (name === 'meteocat') updateMeteocatTime();
+  }
+}
+
+// ── TRANSIT MAP ─────────────────────────────────────────────────────────────
+const TRANSIT_INCIDENTS = [
+  {lat:41.3879, lng:2.1699, road:'Ronda Litoral B-10', type:'Accident', severity:'err',  desc:'Accident amb 2 vehicles. Carril dret tallat.'},
+  {lat:41.4120, lng:2.1780, road:'Av. Meridiana',      type:'Retenció', severity:'warn', desc:'Cua de 3 km. Velocitat 20 km/h.'},
+  {lat:41.4350, lng:2.1750, road:'C-58 pk 12',         type:'Obres',    severity:'warn', desc:'Obres en calçada. Reducció a 1 carril.'},
+  {lat:41.3800, lng:2.1400, road:'Gran Via B-23',       type:'Accident', severity:'err',  desc:'Bolcament de vehicle. Via tallada.'},
+  {lat:41.4550, lng:2.1600, road:'AP-7 pk 156',        type:'Congestió',severity:'warn', desc:'Trànsit molt dens. Velocitat 40 km/h.'},
+  {lat:41.4000, lng:2.1900, road:'C-31 Besòs',         type:'Fluid',    severity:'ok',   desc:'Circulació normal.'},
+  {lat:41.4200, lng:2.0900, road:'Túnel de Vallvidrera',type:'Fluid',   severity:'ok',   desc:'Sense incidències.'},
+  {lat:41.3650, lng:2.1550, road:'Autovia A-2',        type:'Fluid',    severity:'ok',   desc:'Circulació fluida.'},
+];
+
+const SEV_COLOR  = {ok:'#187a40', warn:'#9a7200', err:'#c0271e'};
+const SEV_LABEL  = {ok:'FLUID',   warn:'DENS/OBRES', err:'RETENCIONS'};
+const SEV_FILL   = {ok:'rgba(24,122,64,0.12)', warn:'rgba(154,114,0,0.12)', err:'rgba(192,39,30,0.12)'};
+const SEV_BORDER = {ok:'rgba(24,122,64,0.3)',  warn:'rgba(154,114,0,0.3)',  err:'rgba(192,39,30,0.3)'};
+
+function initPanelMap(name) {
+  const center = [41.4185, 2.1700];
+  const zoom   = name === 'meteocat' ? 9 : 11;
+
+  panelMaps[name] = L.map(name + 'Map', {
+    center, zoom, zoomControl: true, attributionControl: false
+  });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(panelMaps[name]);
+
+  if (name === 'transit')  renderTransitLayers();
+  if (name === 'meteocat') renderMeteocatLayers();
+
+  setTimeout(() => panelMaps[name].invalidateSize(), 100);
+  setTimeout(() => panelMaps[name].invalidateSize(), 400);
+}
+
+function renderTransitLayers() {
+  const m = panelMaps.transit;
+  panelLayers.transit.forEach(l => m.removeLayer(l));
+  panelLayers.transit = [];
+  const sidebar = document.getElementById('transitSidebar');
+  let sideHTML = '<div class="fp-sidebar-title">INCIDÈNCIES DE TRÀNSIT</div>';
+
+  TRANSIT_INCIDENTS.forEach(inc => {
+    const color = SEV_COLOR[inc.severity];
+    // Line segment marker
+    const icon = L.divIcon({
+      html: `<div style="width:14px;height:14px;background:${color};border:2px solid white;border-radius:3px;box-shadow:0 2px 6px rgba(0,0,0,0.2)"></div>`,
+      iconSize:[14,14], iconAnchor:[7,7], className:''
+    });
+    const marker = L.marker([inc.lat, inc.lng], {icon})
+      .addTo(m)
+      .bindPopup(`<div style="font-family:'Rajdhani',sans-serif;min-width:160px">
+        <div style="font-size:14px;font-weight:700;color:${color}">${inc.type}</div>
+        <div style="font-size:12px;font-weight:600;color:#0e1c30;margin-top:2px">${inc.road}</div>
+        <div style="font-size:11px;color:#7a8eaa;font-family:'Share Tech Mono',monospace;margin-top:4px">${inc.desc}</div>
+      </div>`);
+
+    // Small circle around incident
+    const circle = L.circle([inc.lat, inc.lng], {
+      radius: 600,
+      color, fillColor: color, fillOpacity: 0.12, weight: 1.5, opacity: 0.7
+    }).addTo(m);
+
+    panelLayers.transit.push(marker, circle);
+
+    sideHTML += `<div class="transit-card" onclick="panelMaps.transit.setView([${inc.lat},${inc.lng}],14)">
+      <div class="transit-card-title">${inc.road}</div>
+      <div class="transit-card-detail">${inc.desc}</div>
+      <div class="transit-card-badge" style="background:${SEV_FILL[inc.severity]};color:${color};border:1px solid ${SEV_BORDER[inc.severity]}">${SEV_LABEL[inc.severity]}</div>
+    </div>`;
+  });
+
+  sidebar.innerHTML = sideHTML;
+  // Update badge
+  const hasCrit = TRANSIT_INCIDENTS.some(i => i.severity === 'err');
+  const hasWarn = TRANSIT_INCIDENTS.some(i => i.severity === 'warn');
+  const badge = document.getElementById('transitBadge');
+  if (hasCrit) { badge.className='panel-tab-badge err'; badge.textContent='RETENCIONS'; }
+  else if (hasWarn) { badge.className='panel-tab-badge warn'; badge.textContent='INCIDENTS'; }
+  else { badge.className='panel-tab-badge ok'; badge.textContent='FLUID'; }
+}
+
+function updateTransitTime() {
+  const now = new Date();
+  document.getElementById('transitTime').textContent =
+    String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+}
+function refreshTransit() { if(panelMaps.transit) renderTransitLayers(); updateTransitTime(); showToast('🚗 Trànsit actualitzat', false); }
+
+// ── METEOCAT MAP ─────────────────────────────────────────────────────────────
+const METEO_STATIONS = [
+  {lat:41.4219, lng:2.1186, name:'Tibidabo',         temp:18, wind:32, rain:0,   alert:'ok',   alertTxt:'Cap alerta'},
+  {lat:41.4295, lng:2.1488, name:"Vall d'Hebron",    temp:20, wind:18, rain:0,   alert:'ok',   alertTxt:'Cap alerta'},
+  {lat:41.3990, lng:2.1204, name:'Sarrià',            temp:19, wind:22, rain:2,   alert:'warn', alertTxt:'Alerta groga pluja'},
+  {lat:41.4040, lng:2.1570, name:'Gràcia',            temp:21, wind:14, rain:0,   alert:'ok',   alertTxt:'Cap alerta'},
+  {lat:41.4420, lng:2.1730, name:'Nou Barris',        temp:20, wind:28, rain:8,   alert:'warn', alertTxt:'Alerta groga vent'},
+  {lat:41.3850, lng:2.1280, name:'Les Corts',         temp:21, wind:12, rain:0,   alert:'ok',   alertTxt:'Cap alerta'},
+  {lat:41.4000, lng:2.1580, name:'Eixample',          temp:22, wind:10, rain:0,   alert:'ok',   alertTxt:'Cap alerta'},
+  {lat:41.4180, lng:2.0980, name:'Collserola',        temp:16, wind:58, rain:14,  alert:'err',  alertTxt:'Alerta vermella vent'},
+  {lat:41.4380, lng:2.1620, name:'Horta',             temp:20, wind:20, rain:3,   alert:'ok',   alertTxt:'Cap alerta'},
+  {lat:41.4360, lng:2.1960, name:'Sant Andreu',       temp:21, wind:15, rain:0,   alert:'ok',   alertTxt:'Cap alerta'},
+];
+
+const METEO_ICON = { ok:'🟢', warn:'🟡', err:'🔴' };
+
+function renderMeteocatLayers() {
+  const m = panelMaps.meteocat;
+  panelLayers.meteocat.forEach(l => m.removeLayer(l));
+  panelLayers.meteocat = [];
+  const sidebar = document.getElementById('meteocatSidebar');
+  let sideHTML = '<div class="fp-sidebar-title">ESTACIONS METEOROLÒGIQUES</div>';
+
+  METEO_STATIONS.forEach(st => {
+    const color = SEV_COLOR[st.alert];
+    const radius = 8000 + st.wind * 80; // bigger radius = more wind
+
+    const circle = L.circle([st.lat, st.lng], {
+      radius,
+      color, fillColor: color,
+      fillOpacity: st.alert === 'err' ? 0.14 : st.alert === 'warn' ? 0.10 : 0.07,
+      weight: st.alert === 'err' ? 2 : 1.5,
+      dashArray: st.alert === 'ok' ? null : st.alert === 'err' ? '6 4' : null,
+      opacity: 0.75
+    }).addTo(m)
+      .bindPopup(`<div style="font-family:'Rajdhani',sans-serif;min-width:160px">
+        <div style="font-size:14px;font-weight:700;color:${color}">${st.name}</div>
+        <div style="font-size:12px;color:#0e1c30;margin-top:4px">🌡 ${st.temp}°C &nbsp; 💨 ${st.wind} km/h &nbsp; 🌧 ${st.rain} mm</div>
+        <div style="font-size:11px;color:${color};font-family:'Share Tech Mono',monospace;margin-top:4px">${st.alertTxt}</div>
+      </div>`);
+
+    // Station marker
+    const icon = L.divIcon({
+      html: `<div style="width:12px;height:12px;background:${color};border:2px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.2)"></div>`,
+      iconSize:[12,12], iconAnchor:[6,6], className:''
+    });
+    const marker = L.marker([st.lat, st.lng], {icon, zIndexOffset:100}).addTo(m)
+      .bindPopup(`<div style="font-family:'Rajdhani',sans-serif;min-width:160px">
+        <div style="font-size:14px;font-weight:700;color:${color}">${st.name}</div>
+        <div style="font-size:12px;color:#0e1c30;margin-top:4px">🌡 ${st.temp}°C &nbsp; 💨 ${st.wind} km/h &nbsp; 🌧 ${st.rain} mm</div>
+        <div style="font-size:11px;color:${color};font-family:'Share Tech Mono',monospace;margin-top:4px">${st.alertTxt}</div>
+      </div>`);
+
+    panelLayers.meteocat.push(circle, marker);
+
+    sideHTML += `<div class="meteo-card" onclick="panelMaps.meteocat.setView([${st.lat},${st.lng}],13)">
+      <div class="meteo-station">${METEO_ICON[st.alert]} ${st.name}</div>
+      <div class="meteo-vals">
+        <span class="meteo-val">🌡 ${st.temp}°C</span>
+        <span class="meteo-val">💨 ${st.wind} km/h</span>
+        <span class="meteo-val">🌧 ${st.rain} mm</span>
+      </div>
+      <div style="font-size:10px;color:${SEV_COLOR[st.alert]};font-family:'Share Tech Mono',monospace;margin-top:4px;letter-spacing:1px">${st.alertTxt.toUpperCase()}</div>
+    </div>`;
+  });
+
+  sidebar.innerHTML = sideHTML;
+  // Update badge
+  const hasCrit = METEO_STATIONS.some(s => s.alert === 'err');
+  const hasWarn = METEO_STATIONS.some(s => s.alert === 'warn');
+  const badge = document.getElementById('meteocatBadge');
+  if (hasCrit) { badge.className='panel-tab-badge err'; badge.textContent='ALERTA ROJA'; }
+  else if (hasWarn) { badge.className='panel-tab-badge warn'; badge.textContent='ALERTA'; }
+  else { badge.className='panel-tab-badge ok'; badge.textContent='OK'; }
+}
+
+function updateMeteocatTime() {
+  const now = new Date();
+  document.getElementById('meteocatTime').textContent =
+    String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+}
+function refreshMeteocat() { if(panelMaps.meteocat) renderMeteocatLayers(); updateMeteocatTime(); showToast('🌦 Meteocat actualitzat', false); }
+
+</script>
 <style>
   :root {
     --bg: #edf1f7;
@@ -896,6 +1099,160 @@
     border: none;
   }
 
+
+  /* ── PANEL TAB TRIGGERS (header) ── */
+  .panel-tab-wrapper { position: relative; }
+  .panel-tab-trigger {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: var(--panel2);
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    user-select: none;
+  }
+  .panel-tab-trigger:hover { border-color: var(--blue); background: rgba(20,96,200,0.06); box-shadow: 0 2px 8px rgba(20,96,200,0.08); }
+  .panel-tab-trigger.active { border-color: var(--blue); background: rgba(20,96,200,0.08); }
+  .panel-tab-icon { font-size: 15px; }
+  .panel-tab-label {
+    font-size: 11px;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+  .panel-tab-badge {
+    font-size: 9px;
+    font-family: 'Share Tech Mono', monospace;
+    padding: 2px 6px;
+    border-radius: 3px;
+    letter-spacing: 1px;
+    font-weight: 600;
+  }
+  .panel-tab-badge.ok   { background: rgba(24,122,64,0.10); color: var(--green); border: 1px solid rgba(24,122,64,0.3); }
+  .panel-tab-badge.warn { background: rgba(154,114,0,0.10); color: var(--yellow); border: 1px solid rgba(154,114,0,0.3); }
+  .panel-tab-badge.err  { background: rgba(192,39,30,0.10); color: var(--accent); border: 1px solid rgba(192,39,30,0.3); }
+
+  /* ── FULLSCREEN PANELS ── */
+  .fullscreen-panel {
+    position: fixed;
+    top: 56px;
+    left: 0; right: 0;
+    width: 100%;
+    height: calc(100vh - 56px);
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+    z-index: 4000;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(-100%);
+    transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+  }
+  .fullscreen-panel.open { transform: translateY(0); }
+  .fp-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(20,96,200,0.03);
+    flex-shrink: 0;
+  }
+  .fp-title {
+    font-size: 11px;
+    letter-spacing: 3px;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--blue);
+    flex: 1;
+  }
+  .fp-legend { display: flex; gap: 12px; }
+  .fp-leg-item {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 10px; font-family: 'Share Tech Mono', monospace; color: var(--text-dim);
+  }
+  .fp-leg-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .fp-close {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    transition: all 0.15s;
+  }
+  .fp-close:hover { border-color: var(--accent); color: var(--accent); }
+  .fp-body {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+  }
+  .fp-sidebar {
+    border-left: 1px solid var(--border);
+    padding: 12px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .fp-sidebar-title {
+    font-size: 9px;
+    letter-spacing: 2px;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+  .fp-footer {
+    padding: 6px 16px;
+    border-top: 1px solid var(--border);
+    font-size: 10px;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text-dim);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .fp-refresh { color: var(--blue); cursor: pointer; letter-spacing: 1px; }
+  .fp-refresh:hover { opacity: 0.7; }
+
+  /* Traffic incident cards */
+  .transit-card {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-family: 'Rajdhani', sans-serif;
+  }
+  .transit-card-title { font-size: 13px; font-weight: 700; color: var(--text-bright); }
+  .transit-card-detail { font-size: 11px; color: var(--text-dim); font-family: 'Share Tech Mono', monospace; margin-top: 2px; }
+  .transit-card-badge {
+    display: inline-block; margin-top: 5px;
+    font-size: 9px; padding: 1px 6px; border-radius: 2px;
+    font-family: 'Share Tech Mono', monospace; letter-spacing: 1px;
+  }
+
+  /* Meteo cards */
+  .meteo-card {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 10px;
+  }
+  .meteo-station { font-size: 13px; font-weight: 700; color: var(--text-bright); font-family: 'Rajdhani', sans-serif; }
+  .meteo-vals { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+  .meteo-val {
+    font-size: 10px; font-family: 'Share Tech Mono', monospace; color: var(--text-dim);
+    background: var(--panel); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px;
+  }
+
 </style>
 </head>
 <body>
@@ -949,9 +1306,73 @@
       </div>
     </div>
 
+    <!-- TRÀNSIT PANEL TRIGGER -->
+    <div class="panel-tab-wrapper" id="transitWrapper">
+      <div class="panel-tab-trigger" onclick="togglePanelTab('transit')">
+        <span class="panel-tab-icon">🚗</span>
+        <span class="panel-tab-label">TRÀNSIT</span>
+        <div class="panel-tab-badge ok" id="transitBadge">FLUID</div>
+      </div>
+    </div>
+
+    <!-- METEOCAT PANEL TRIGGER -->
+    <div class="panel-tab-wrapper" id="meteocatWrapper">
+      <div class="panel-tab-trigger" onclick="togglePanelTab('meteocat')">
+        <span class="panel-tab-icon">🌦</span>
+        <span class="panel-tab-label">METEOCAT</span>
+        <div class="panel-tab-badge warn" id="meteocatBadge">ALERTA</div>
+      </div>
+    </div>
+
     <div class="clock" id="clock">00:00:00</div>
   </div>
 </header>
+
+<!-- ── TRÀNSIT FULLSCREEN PANEL ── -->
+<div class="fullscreen-panel" id="transitPanel">
+  <div class="fp-header">
+    <div class="fp-title">🚗 ESTAT DEL TRÀNSIT — ÀREA METROPOLITANA</div>
+    <div class="fp-legend">
+      <span class="fp-leg-item"><span class="fp-leg-dot" style="background:#187a40"></span>Fluid</span>
+      <span class="fp-leg-item"><span class="fp-leg-dot" style="background:#9a7200"></span>Dens</span>
+      <span class="fp-leg-item"><span class="fp-leg-dot" style="background:#c0271e"></span>Retencions</span>
+    </div>
+    <button class="fp-close" onclick="togglePanelTab('transit')">✕ TANCAR</button>
+  </div>
+  <div class="fp-body">
+    <div id="transitMap" style="flex:1;min-height:0"></div>
+    <div class="fp-sidebar" id="transitSidebar">
+      <div class="fp-sidebar-title">INCIDÈNCIES DE TRÀNSIT</div>
+    </div>
+  </div>
+  <div class="fp-footer">
+    <span>Font: Servei Català de Trànsit · Actualitzat: <span id="transitTime">—</span></span>
+    <span class="fp-refresh" onclick="refreshTransit()">↺ ACTUALITZAR</span>
+  </div>
+</div>
+
+<!-- ── METEOCAT FULLSCREEN PANEL ── -->
+<div class="fullscreen-panel" id="meteocatPanel">
+  <div class="fp-header">
+    <div class="fp-title">🌦 METEOCAT — PREDICCIÓ I ALERTES</div>
+    <div class="fp-legend">
+      <span class="fp-leg-item"><span class="fp-leg-dot" style="background:#187a40"></span>Cap alerta</span>
+      <span class="fp-leg-item"><span class="fp-leg-dot" style="background:#9a7200"></span>Alerta groga</span>
+      <span class="fp-leg-item"><span class="fp-leg-dot" style="background:#c0271e"></span>Alerta vermella</span>
+    </div>
+    <button class="fp-close" onclick="togglePanelTab('meteocat')">✕ TANCAR</button>
+  </div>
+  <div class="fp-body">
+    <div id="meteocatMap" style="flex:1;min-height:0"></div>
+    <div class="fp-sidebar" id="meteocatSidebar">
+      <div class="fp-sidebar-title">ALERTES ACTIVES</div>
+    </div>
+  </div>
+  <div class="fp-footer">
+    <span>Font: Meteocat · Actualitzat: <span id="meteocatTime">—</span></span>
+    <span class="fp-refresh" onclick="refreshMeteocat()">↺ ACTUALITZAR</span>
+  </div>
+</div>
 
 <div class="main">
 
@@ -1047,7 +1468,6 @@
     <div class="map-toolbar" id="mapToolbar">
       <button class="map-btn" id="toolCaller" onclick="setMapMode('caller')">📍 Llamante</button>
       <button class="map-btn" id="toolIncident" onclick="setMapMode('incident')">🚨 Incidencia</button>
-      <button class="map-btn" onclick="toggleTetra()" style="background:rgba(20,96,200,0.08);border-color:var(--blue);color:var(--blue)">📡 Red TETRA</button>
 
       <!-- Activos disponibles dropdown -->
       <div class="activos-wrap" id="activosWrap">
@@ -1802,6 +2222,209 @@ function toggleActivoLayer(type, visible) {
     } catch(e) {}
   });
 }
+
+
+// ────────────────────────── PANEL TABS (Trànsit / Meteocat)
+const panelState = { transit: false, meteocat: false };
+const panelMaps  = { transit: null,  meteocat: null  };
+const panelLayers= { transit: [],    meteocat: []    };
+
+function togglePanelTab(name) {
+  // Close all others first
+  Object.keys(panelState).forEach(k => {
+    if (k !== name && panelState[k]) {
+      panelState[k] = false;
+      document.getElementById(k + 'Panel').classList.remove('open');
+      const w = document.getElementById(k + 'Wrapper');
+      if (w) w.querySelector('.panel-tab-trigger').classList.remove('active');
+    }
+  });
+  // Also close TETRA if open
+  if (name !== 'tetra' && tetraOpen) toggleTetra();
+
+  panelState[name] = !panelState[name];
+  const panel = document.getElementById(name + 'Panel');
+  panel.classList.toggle('open', panelState[name]);
+  const wrapper = document.getElementById(name + 'Wrapper');
+  if (wrapper) wrapper.querySelector('.panel-tab-trigger').classList.toggle('active', panelState[name]);
+
+  if (panelState[name]) {
+    if (!panelMaps[name]) initPanelMap(name);
+    else setTimeout(() => panelMaps[name].invalidateSize(), 360);
+    if (name === 'transit') updateTransitTime();
+    if (name === 'meteocat') updateMeteocatTime();
+  }
+}
+
+// ── TRANSIT MAP ─────────────────────────────────────────────────────────────
+const TRANSIT_INCIDENTS = [
+  {lat:41.3879, lng:2.1699, road:'Ronda Litoral B-10', type:'Accident', severity:'err',  desc:'Accident amb 2 vehicles. Carril dret tallat.'},
+  {lat:41.4120, lng:2.1780, road:'Av. Meridiana',      type:'Retenció', severity:'warn', desc:'Cua de 3 km. Velocitat 20 km/h.'},
+  {lat:41.4350, lng:2.1750, road:'C-58 pk 12',         type:'Obres',    severity:'warn', desc:'Obres en calçada. Reducció a 1 carril.'},
+  {lat:41.3800, lng:2.1400, road:'Gran Via B-23',       type:'Accident', severity:'err',  desc:'Bolcament de vehicle. Via tallada.'},
+  {lat:41.4550, lng:2.1600, road:'AP-7 pk 156',        type:'Congestió',severity:'warn', desc:'Trànsit molt dens. Velocitat 40 km/h.'},
+  {lat:41.4000, lng:2.1900, road:'C-31 Besòs',         type:'Fluid',    severity:'ok',   desc:'Circulació normal.'},
+  {lat:41.4200, lng:2.0900, road:'Túnel de Vallvidrera',type:'Fluid',   severity:'ok',   desc:'Sense incidències.'},
+  {lat:41.3650, lng:2.1550, road:'Autovia A-2',        type:'Fluid',    severity:'ok',   desc:'Circulació fluida.'},
+];
+
+const SEV_COLOR  = {ok:'#187a40', warn:'#9a7200', err:'#c0271e'};
+const SEV_LABEL  = {ok:'FLUID',   warn:'DENS/OBRES', err:'RETENCIONS'};
+const SEV_FILL   = {ok:'rgba(24,122,64,0.12)', warn:'rgba(154,114,0,0.12)', err:'rgba(192,39,30,0.12)'};
+const SEV_BORDER = {ok:'rgba(24,122,64,0.3)',  warn:'rgba(154,114,0,0.3)',  err:'rgba(192,39,30,0.3)'};
+
+function initPanelMap(name) {
+  const center = [41.4185, 2.1700];
+  const zoom   = name === 'meteocat' ? 9 : 11;
+
+  panelMaps[name] = L.map(name + 'Map', {
+    center, zoom, zoomControl: true, attributionControl: false
+  });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(panelMaps[name]);
+
+  if (name === 'transit')  renderTransitLayers();
+  if (name === 'meteocat') renderMeteocatLayers();
+
+  setTimeout(() => panelMaps[name].invalidateSize(), 100);
+  setTimeout(() => panelMaps[name].invalidateSize(), 400);
+}
+
+function renderTransitLayers() {
+  const m = panelMaps.transit;
+  panelLayers.transit.forEach(l => m.removeLayer(l));
+  panelLayers.transit = [];
+  const sidebar = document.getElementById('transitSidebar');
+  let sideHTML = '<div class="fp-sidebar-title">INCIDÈNCIES DE TRÀNSIT</div>';
+
+  TRANSIT_INCIDENTS.forEach(inc => {
+    const color = SEV_COLOR[inc.severity];
+    // Line segment marker
+    const icon = L.divIcon({
+      html: `<div style="width:14px;height:14px;background:${color};border:2px solid white;border-radius:3px;box-shadow:0 2px 6px rgba(0,0,0,0.2)"></div>`,
+      iconSize:[14,14], iconAnchor:[7,7], className:''
+    });
+    const marker = L.marker([inc.lat, inc.lng], {icon})
+      .addTo(m)
+      .bindPopup(`<div style="font-family:'Rajdhani',sans-serif;min-width:160px">
+        <div style="font-size:14px;font-weight:700;color:${color}">${inc.type}</div>
+        <div style="font-size:12px;font-weight:600;color:#0e1c30;margin-top:2px">${inc.road}</div>
+        <div style="font-size:11px;color:#7a8eaa;font-family:'Share Tech Mono',monospace;margin-top:4px">${inc.desc}</div>
+      </div>`);
+
+    // Small circle around incident
+    const circle = L.circle([inc.lat, inc.lng], {
+      radius: 600,
+      color, fillColor: color, fillOpacity: 0.12, weight: 1.5, opacity: 0.7
+    }).addTo(m);
+
+    panelLayers.transit.push(marker, circle);
+
+    sideHTML += `<div class="transit-card" onclick="panelMaps.transit.setView([${inc.lat},${inc.lng}],14)">
+      <div class="transit-card-title">${inc.road}</div>
+      <div class="transit-card-detail">${inc.desc}</div>
+      <div class="transit-card-badge" style="background:${SEV_FILL[inc.severity]};color:${color};border:1px solid ${SEV_BORDER[inc.severity]}">${SEV_LABEL[inc.severity]}</div>
+    </div>`;
+  });
+
+  sidebar.innerHTML = sideHTML;
+  // Update badge
+  const hasCrit = TRANSIT_INCIDENTS.some(i => i.severity === 'err');
+  const hasWarn = TRANSIT_INCIDENTS.some(i => i.severity === 'warn');
+  const badge = document.getElementById('transitBadge');
+  if (hasCrit) { badge.className='panel-tab-badge err'; badge.textContent='RETENCIONS'; }
+  else if (hasWarn) { badge.className='panel-tab-badge warn'; badge.textContent='INCIDENTS'; }
+  else { badge.className='panel-tab-badge ok'; badge.textContent='FLUID'; }
+}
+
+function updateTransitTime() {
+  const now = new Date();
+  document.getElementById('transitTime').textContent =
+    String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+}
+function refreshTransit() { if(panelMaps.transit) renderTransitLayers(); updateTransitTime(); showToast('🚗 Trànsit actualitzat', false); }
+
+// ── METEOCAT MAP ─────────────────────────────────────────────────────────────
+const METEO_STATIONS = [
+  {lat:41.4219, lng:2.1186, name:'Tibidabo',         temp:18, wind:32, rain:0,   alert:'ok',   alertTxt:'Cap alerta'},
+  {lat:41.4295, lng:2.1488, name:"Vall d'Hebron",    temp:20, wind:18, rain:0,   alert:'ok',   alertTxt:'Cap alerta'},
+  {lat:41.3990, lng:2.1204, name:'Sarrià',            temp:19, wind:22, rain:2,   alert:'warn', alertTxt:'Alerta groga pluja'},
+  {lat:41.4040, lng:2.1570, name:'Gràcia',            temp:21, wind:14, rain:0,   alert:'ok',   alertTxt:'Cap alerta'},
+  {lat:41.4420, lng:2.1730, name:'Nou Barris',        temp:20, wind:28, rain:8,   alert:'warn', alertTxt:'Alerta groga vent'},
+  {lat:41.3850, lng:2.1280, name:'Les Corts',         temp:21, wind:12, rain:0,   alert:'ok',   alertTxt:'Cap alerta'},
+  {lat:41.4000, lng:2.1580, name:'Eixample',          temp:22, wind:10, rain:0,   alert:'ok',   alertTxt:'Cap alerta'},
+  {lat:41.4180, lng:2.0980, name:'Collserola',        temp:16, wind:58, rain:14,  alert:'err',  alertTxt:'Alerta vermella vent'},
+  {lat:41.4380, lng:2.1620, name:'Horta',             temp:20, wind:20, rain:3,   alert:'ok',   alertTxt:'Cap alerta'},
+  {lat:41.4360, lng:2.1960, name:'Sant Andreu',       temp:21, wind:15, rain:0,   alert:'ok',   alertTxt:'Cap alerta'},
+];
+
+const METEO_ICON = { ok:'🟢', warn:'🟡', err:'🔴' };
+
+function renderMeteocatLayers() {
+  const m = panelMaps.meteocat;
+  panelLayers.meteocat.forEach(l => m.removeLayer(l));
+  panelLayers.meteocat = [];
+  const sidebar = document.getElementById('meteocatSidebar');
+  let sideHTML = '<div class="fp-sidebar-title">ESTACIONS METEOROLÒGIQUES</div>';
+
+  METEO_STATIONS.forEach(st => {
+    const color = SEV_COLOR[st.alert];
+    const radius = 8000 + st.wind * 80; // bigger radius = more wind
+
+    const circle = L.circle([st.lat, st.lng], {
+      radius,
+      color, fillColor: color,
+      fillOpacity: st.alert === 'err' ? 0.14 : st.alert === 'warn' ? 0.10 : 0.07,
+      weight: st.alert === 'err' ? 2 : 1.5,
+      dashArray: st.alert === 'ok' ? null : st.alert === 'err' ? '6 4' : null,
+      opacity: 0.75
+    }).addTo(m)
+      .bindPopup(`<div style="font-family:'Rajdhani',sans-serif;min-width:160px">
+        <div style="font-size:14px;font-weight:700;color:${color}">${st.name}</div>
+        <div style="font-size:12px;color:#0e1c30;margin-top:4px">🌡 ${st.temp}°C &nbsp; 💨 ${st.wind} km/h &nbsp; 🌧 ${st.rain} mm</div>
+        <div style="font-size:11px;color:${color};font-family:'Share Tech Mono',monospace;margin-top:4px">${st.alertTxt}</div>
+      </div>`);
+
+    // Station marker
+    const icon = L.divIcon({
+      html: `<div style="width:12px;height:12px;background:${color};border:2px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.2)"></div>`,
+      iconSize:[12,12], iconAnchor:[6,6], className:''
+    });
+    const marker = L.marker([st.lat, st.lng], {icon, zIndexOffset:100}).addTo(m)
+      .bindPopup(`<div style="font-family:'Rajdhani',sans-serif;min-width:160px">
+        <div style="font-size:14px;font-weight:700;color:${color}">${st.name}</div>
+        <div style="font-size:12px;color:#0e1c30;margin-top:4px">🌡 ${st.temp}°C &nbsp; 💨 ${st.wind} km/h &nbsp; 🌧 ${st.rain} mm</div>
+        <div style="font-size:11px;color:${color};font-family:'Share Tech Mono',monospace;margin-top:4px">${st.alertTxt}</div>
+      </div>`);
+
+    panelLayers.meteocat.push(circle, marker);
+
+    sideHTML += `<div class="meteo-card" onclick="panelMaps.meteocat.setView([${st.lat},${st.lng}],13)">
+      <div class="meteo-station">${METEO_ICON[st.alert]} ${st.name}</div>
+      <div class="meteo-vals">
+        <span class="meteo-val">🌡 ${st.temp}°C</span>
+        <span class="meteo-val">💨 ${st.wind} km/h</span>
+        <span class="meteo-val">🌧 ${st.rain} mm</span>
+      </div>
+      <div style="font-size:10px;color:${SEV_COLOR[st.alert]};font-family:'Share Tech Mono',monospace;margin-top:4px;letter-spacing:1px">${st.alertTxt.toUpperCase()}</div>
+    </div>`;
+  });
+
+  sidebar.innerHTML = sideHTML;
+  // Update badge
+  const hasCrit = METEO_STATIONS.some(s => s.alert === 'err');
+  const hasWarn = METEO_STATIONS.some(s => s.alert === 'warn');
+  const badge = document.getElementById('meteocatBadge');
+  if (hasCrit) { badge.className='panel-tab-badge err'; badge.textContent='ALERTA ROJA'; }
+  else if (hasWarn) { badge.className='panel-tab-badge warn'; badge.textContent='ALERTA'; }
+  else { badge.className='panel-tab-badge ok'; badge.textContent='OK'; }
+}
+
+function updateMeteocatTime() {
+  const now = new Date();
+  document.getElementById('meteocatTime').textContent =
+    String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+}
+function refreshMeteocat() { if(panelMaps.meteocat) renderMeteocatLayers(); updateMeteocatTime(); showToast('🌦 Meteocat actualitzat', false); }
 
 </script>
 </body>
