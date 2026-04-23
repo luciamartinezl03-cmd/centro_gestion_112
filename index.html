@@ -123,13 +123,15 @@
     align-items: center;
     gap: 8px;
     cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 4px;
-    border: 1px solid transparent;
-    transition: border-color 0.2s, background 0.2s;
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: var(--panel2);
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
     user-select: none;
   }
-  .tetra-trigger:hover { border-color: var(--border); background: rgba(0,0,0,0.04); }
+  .tetra-trigger:hover { border-color: var(--blue); background: rgba(20,96,200,0.06); box-shadow: 0 2px 8px rgba(20,96,200,0.10); }
+  .tetra-trigger.active { border-color: var(--blue); background: rgba(20,96,200,0.08); }
   .tetra-label {
     font-size: 11px;
     font-family: 'Share Tech Mono', monospace;
@@ -1045,6 +1047,7 @@
     <div class="map-toolbar" id="mapToolbar">
       <button class="map-btn" id="toolCaller" onclick="setMapMode('caller')">📍 Llamante</button>
       <button class="map-btn" id="toolIncident" onclick="setMapMode('incident')">🚨 Incidencia</button>
+      <button class="map-btn" onclick="toggleTetra()" style="background:rgba(20,96,200,0.08);border-color:var(--blue);color:var(--blue)">📡 Red TETRA</button>
 
       <!-- Activos disponibles dropdown -->
       <div class="activos-wrap" id="activosWrap">
@@ -1514,6 +1517,7 @@ function toggleTetra() {
   document.getElementById('eyeOpen').style.display  = tetraOpen ? 'none' : 'block';
   document.getElementById('eyeClosed').style.display = tetraOpen ? 'block' : 'none';
   document.getElementById('tetraEye').classList.toggle('active', tetraOpen);
+  document.querySelector('.tetra-trigger').classList.toggle('active', tetraOpen);
 
   if (tetraOpen && !tetraMap) {
     initTetraMap();
@@ -1538,6 +1542,7 @@ function tetraOutsideClick(e) {
     document.getElementById('eyeOpen').style.display  = 'block';
     document.getElementById('eyeClosed').style.display = 'none';
     document.getElementById('tetraEye').classList.remove('active');
+    document.querySelector('.tetra-trigger').classList.remove('active');
     document.removeEventListener('click', tetraOutsideClick);
   }
 }
