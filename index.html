@@ -7,356 +7,299 @@
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
-// ────────────────────────── PANEL TABS (Trànsit / Meteocat)
-const panelState = { transit: false, meteocat: false };
-const panelMaps  = { transit: null,  meteocat: null  };
-const panelLayers= { transit: [],    meteocat: []    };
+var TIBIDABO_B64 = "data:image/jpeg;base64,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";
 
-function togglePanelTab(name) {
-  // Close all others first
-  Object.keys(panelState).forEach(k => {
-    if (k !== name && panelState[k]) {
-      panelState[k] = false;
-      document.getElementById(k + 'Panel').classList.remove('open');
-      const w = document.getElementById(k + 'Wrapper');
-      if (w) w.querySelector('.panel-tab-trigger').classList.remove('active');
+// ═══════════════════════════════════════════════════
+// TRÀNSIT + METEOCAT PANELS
+// ═══════════════════════════════════════════════════
+var tabOpen = {transit: false, meteocat: false};
+var tabMaps = {transit: null, meteocat: null};
+var tabLayers = {transit: [], meteocat: []};
+
+function toggleTab(name) {
+  // close tetra if open
+  if (tetraOpen) toggleTetra();
+  // close other tab
+  Object.keys(tabOpen).forEach(function(k) {
+    if (k !== name && tabOpen[k]) {
+      tabOpen[k] = false;
+      var p = document.getElementById(k + 'Panel');
+      p.style.transform = 'translateY(-110%)';
+      p.style.visibility = 'hidden';
+      p.style.pointerEvents = 'none';
+      p.style.transition = 'transform 0.35s cubic-bezier(0.4,0,0.2,1), visibility 0s linear 0.35s';
+      document.getElementById(k + 'Trigger').style.borderColor = 'var(--border)';
+      document.getElementById(k + 'Trigger').style.background = 'var(--panel2)';
     }
   });
-  // Also close TETRA if open
-  if (name !== 'tetra' && tetraOpen) toggleTetra();
 
-  panelState[name] = !panelState[name];
-  const panel = document.getElementById(name + 'Panel');
-  panel.classList.toggle('open', panelState[name]);
-  const wrapper = document.getElementById(name + 'Wrapper');
-  if (wrapper) wrapper.querySelector('.panel-tab-trigger').classList.toggle('active', panelState[name]);
+  tabOpen[name] = !tabOpen[name];
+  var panel = document.getElementById(name + 'Panel');
 
-  if (panelState[name]) {
-    if (!panelMaps[name]) {
-      initPanelMap(name);
-    } else {
-      setTimeout(() => {
-        panelMaps[name].invalidateSize();
-        if (name === 'transit')  renderTransitLayers();
-        if (name === 'meteocat') renderMeteocatLayers();
-      }, 400);
-    }
-    if (name === 'transit') updateTransitTime();
-    if (name === 'meteocat') updateMeteocatTime();
+  if (tabOpen[name]) {
+    panel.style.transition = 'transform 0.35s cubic-bezier(0.4,0,0.2,1), visibility 0s linear 0s';
+    panel.style.visibility = 'visible';
+    panel.style.pointerEvents = 'all';
+    panel.style.transform = 'translateY(0)';
+    document.getElementById(name + 'Trigger').style.borderColor = 'var(--blue)';
+    document.getElementById(name + 'Trigger').style.background = 'rgba(20,96,200,0.08)';
+    // init map after animation
+    setTimeout(function() {
+      if (!tabMaps[name]) {
+        initTabMap(name);
+      } else {
+        tabMaps[name].invalidateSize();
+        if (name === 'transit') drawTransit();
+        if (name === 'meteocat') drawMeteocat();
+      }
+    }, 380);
+    if (name === 'transit') updateTime('transit');
+    if (name === 'meteocat') updateTime('meteocat');
+  } else {
+    panel.style.transform = 'translateY(-110%)';
+    panel.style.visibility = 'hidden';
+    panel.style.pointerEvents = 'none';
+    panel.style.transition = 'transform 0.35s cubic-bezier(0.4,0,0.2,1), visibility 0s linear 0.35s';
+    document.getElementById(name + 'Trigger').style.borderColor = 'var(--border)';
+    document.getElementById(name + 'Trigger').style.background = 'var(--panel2)';
   }
 }
 
-// ── TRANSIT MAP ─────────────────────────────────────────────────────────────
-// Road segments: each has a polyline path, severity color, name and description
-const TRANSIT_ROADS = [
-  {
-    name: 'Ronda Litoral B-10',
-    type: 'Accident', severity: 'err',
-    desc: 'Accident amb 2 vehicles. Carril dret tallat.',
-    path: [[41.3820,2.1550],[41.3850,2.1620],[41.3879,2.1699],[41.3910,2.1800],[41.3940,2.1900]]
-  },
-  {
-    name: 'Av. Meridiana',
-    type: 'Retenció', severity: 'warn',
-    desc: 'Cua de 3 km. Velocitat 20 km/h.',
-    path: [[41.3980,2.1780],[41.4050,2.1770],[41.4120,2.1780],[41.4200,2.1790]]
-  },
-  {
-    name: 'C-58 Sabadell',
-    type: 'Obres', severity: 'warn',
-    desc: 'Obres en calçada. Reducció a 1 carril.',
-    path: [[41.3900,2.1200],[41.4050,2.1180],[41.4200,2.1160],[41.4350,2.1150]]
-  },
-  {
-    name: 'Gran Via B-23',
-    type: 'Accident', severity: 'err',
-    desc: 'Bolcament de vehicle. Via tallada.',
-    path: [[41.3750,2.1100],[41.3780,2.1250],[41.3800,2.1400],[41.3820,2.1550]]
-  },
-  {
-    name: 'AP-7 Nord',
-    type: 'Congestió', severity: 'warn',
-    desc: 'Trànsit molt dens. Velocitat 40 km/h.',
-    path: [[41.4200,2.1600],[41.4350,2.1650],[41.4550,2.1700],[41.4700,2.1750]]
-  },
-  {
-    name: 'Ronda de Dalt B-20',
-    type: 'Fluid', severity: 'ok',
-    desc: 'Circulació normal.',
-    path: [[41.4000,2.1200],[41.4100,2.1400],[41.4150,2.1600],[41.4100,2.1800],[41.4000,2.1900]]
-  },
-  {
-    name: 'Túnel de Vallvidrera',
-    type: 'Fluid', severity: 'ok',
-    desc: 'Sense incidències.',
-    path: [[41.4180,2.0950],[41.4200,2.1050],[41.4210,2.1150]]
-  },
-  {
-    name: 'Autovia A-2',
-    type: 'Fluid', severity: 'ok',
-    desc: 'Circulació fluida.',
-    path: [[41.3500,2.0800],[41.3600,2.1000],[41.3700,2.1200],[41.3800,2.1400]]
-  },
-  {
-    name: 'C-31 Litoral Sud',
-    type: 'Fluid', severity: 'ok',
-    desc: 'Sense retencions.',
-    path: [[41.3650,2.1700],[41.3580,2.1800],[41.3500,2.1900]]
-  },
-  {
-    name: 'C-17 Granollers',
-    type: 'Fluid', severity: 'ok',
-    desc: 'Circulació normal.',
-    path: [[41.4200,2.1800],[41.4350,2.1850],[41.4500,2.1900],[41.4650,2.1950]]
-  },
-];
-
-const SEV_COLOR  = {ok:'#187a40', warn:'#9a7200', err:'#c0271e'};
-const SEV_LABEL  = {ok:'FLUID',   warn:'DENS/OBRES', err:'RETENCIONS'};
-const SEV_FILL   = {ok:'rgba(24,122,64,0.12)', warn:'rgba(154,114,0,0.12)', err:'rgba(192,39,30,0.12)'};
-const SEV_BORDER = {ok:'rgba(24,122,64,0.3)',  warn:'rgba(154,114,0,0.3)',  err:'rgba(192,39,30,0.3)'};
-
-function initPanelMap(name) {
-  const center = [41.4185, 2.1700];
-  const zoom   = name === 'meteocat' ? 9 : 11;
-
-  panelMaps[name] = L.map(name + 'Map', {
-    center, zoom, zoomControl: true, attributionControl: false
-  });
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(panelMaps[name]);
-
-  // Wait for panel animation + map tiles before adding layers
-  setTimeout(() => {
-    panelMaps[name].invalidateSize();
-    if (name === 'transit')  renderTransitLayers();
-    if (name === 'meteocat') renderMeteocatLayers();
-  }, 400);
+function updateTime(name) {
+  var now = new Date();
+  var t = ('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2)+':'+('0'+now.getSeconds()).slice(-2);
+  document.getElementById(name + 'Time').textContent = t;
 }
 
-function renderTransitLayers() {
-  const m = panelMaps.transit;
-  panelLayers.transit.forEach(l => m.removeLayer(l));
-  panelLayers.transit = [];
-  const sidebar = document.getElementById('transitSidebar');
-  let sideHTML = '<div class="fp-sidebar-title">INCIDÈNCIES DE TRÀNSIT</div>';
+function initTabMap(name) {
+  var center = name === 'meteocat' ? [41.7, 1.5] : [41.65, 1.8];
+  var zoom = name === 'meteocat' ? 8 : 8;
+  tabMaps[name] = L.map(name + 'Map', {center: center, zoom: zoom, zoomControl: true, attributionControl: false});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {maxZoom: 19}).addTo(tabMaps[name]);
+  tabMaps[name].invalidateSize();
+  if (name === 'transit') drawTransit();
+  if (name === 'meteocat') drawMeteocat();
+}
 
-  TRANSIT_ROADS.forEach(road => {
-    const color = SEV_COLOR[road.severity];
-    const weight = road.severity === 'err' ? 7 : road.severity === 'warn' ? 6 : 5;
-    const opacity = road.severity === 'ok' ? 0.65 : 0.85;
+// ── TRÀNSIT ──────────────────────────────────────────────────────────────────
+var ROADS = [
+  // AP-7 Nord
+  {name:'AP-7 Nord (Girona)', sev:'ok', desc:'Circulació fluida.',
+   path:[[41.98,2.82],[41.90,2.76],[41.82,2.72],[41.74,2.68],[41.65,2.63]]},
+  // AP-7 Sud
+  {name:'AP-7 Sud (Tarragona)', sev:'warn', desc:'Trànsit dens. Obres pk 78.',
+   path:[[41.38,2.17],[41.25,1.95],[41.12,1.72],[41.05,1.55],[40.95,1.40]]},
+  // AP-2
+  {name:'AP-2 (Lleida-BCN)', sev:'ok', desc:'Sense incidències.',
+   path:[[41.37,2.08],[41.30,1.90],[41.25,1.60],[41.20,1.30],[41.15,1.00],[41.10,0.70]]},
+  // B-23 Gran Via
+  {name:'Gran Via B-23', sev:'err', desc:'Accident km 12. Carril tallat.',
+   path:[[41.38,2.17],[41.36,2.10],[41.34,2.03],[41.32,1.97]]},
+  // B-10 Ronda Litoral
+  {name:'Ronda Litoral B-10', sev:'err', desc:'Retencions per accident.',
+   path:[[41.42,2.22],[41.40,2.18],[41.38,2.17],[41.37,2.14],[41.36,2.10]]},
+  // B-20 Ronda Dalt
+  {name:'Ronda de Dalt B-20', sev:'warn', desc:'Congestió habitual.',
+   path:[[41.45,2.08],[41.44,2.14],[41.43,2.18],[41.42,2.22]]},
+  // C-58 Sabadell
+  {name:'C-58 (Sabadell)', sev:'ok', desc:'Fluid.',
+   path:[[41.38,2.17],[41.46,2.15],[41.54,2.10],[41.63,2.08]]},
+  // C-17 Granollers
+  {name:'C-17 (Granollers)', sev:'ok', desc:'Sense retencions.',
+   path:[[41.42,2.22],[41.50,2.22],[41.60,2.21],[41.70,2.20]]},
+  // A-2 Autovia
+  {name:'A-2 (Autovia)', sev:'ok', desc:'Circulació normal.',
+   path:[[41.37,2.08],[41.42,1.95],[41.50,1.80],[41.58,1.60]]},
+  // N-II
+  {name:'N-II (Girona)', sev:'warn', desc:'Trànsit dens a Mataró.',
+   path:[[41.42,2.22],[41.53,2.42],[41.63,2.55],[41.75,2.72]]},
+  // C-31 Costa
+  {name:'C-31 Costa (Garraf)', sev:'ok', desc:'Sense incidències.',
+   path:[[41.38,2.17],[41.28,1.97],[41.18,1.78],[41.10,1.62]]},
+  // C-32 Litoral
+  {name:'C-32 (Sitges)', sev:'ok', desc:'Fluid.',
+   path:[[41.38,2.17],[41.30,1.90],[41.18,1.78]]},
+  // C-25 Eix Transversal
+  {name:'C-25 Eix Transversal', sev:'ok', desc:'Circulació normal.',
+   path:[[41.76,2.72],[41.74,2.45],[41.72,2.10],[41.70,1.80],[41.68,1.45],[41.65,1.10],[41.62,0.75]]},
+  // N-340 Tarragona
+  {name:'N-340 (Tarragona)', sev:'ok', desc:'Sense retencions.',
+   path:[[41.10,1.25],[41.12,1.05],[41.14,0.88],[41.15,0.70]]},
+  // Meridiana
+  {name:'Av. Meridiana', sev:'warn', desc:'Cua de 2 km hora punta.',
+   path:[[41.38,2.17],[41.42,2.19],[41.46,2.20]]},
+];
 
-    // Draw road as colored polyline
-    const line = L.polyline(road.path, {
-      color,
-      weight,
-      opacity,
-      lineCap: 'round',
-      lineJoin: 'round'
-    }).addTo(m).bindPopup(`
-      <div style="font-family:'Rajdhani',sans-serif;min-width:170px">
-        <div style="font-size:14px;font-weight:700;color:${color}">${road.type}</div>
-        <div style="font-size:13px;font-weight:600;color:#0e1c30;margin-top:2px">${road.name}</div>
-        <div style="font-size:11px;color:#7a8eaa;font-family:'Share Tech Mono',monospace;margin-top:4px">${road.desc}</div>
-      </div>
-    `);
+var SEV = {ok:'#187a40', warn:'#c8930a', err:'#c0271e'};
+var SEV_LABEL = {ok:'FLUID', warn:'DENS', err:'RETENCIONS'};
 
-    // For incidents (err/warn), add a pulsing dot at midpoint
-    if (road.severity !== 'ok') {
-      const mid = road.path[Math.floor(road.path.length / 2)];
-      const dotIcon = L.divIcon({
-        html: `<div style="width:16px;height:16px;background:${color};border:2.5px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.25)"></div>`,
-        iconSize:[16,16], iconAnchor:[8,8], className:''
-      });
-      const dot = L.marker(mid, {icon: dotIcon, zIndexOffset: 100}).addTo(m)
-        .bindPopup(`
-          <div style="font-family:'Rajdhani',sans-serif;min-width:170px">
-            <div style="font-size:14px;font-weight:700;color:${color}">${road.type}</div>
-            <div style="font-size:13px;font-weight:600;color:#0e1c30;margin-top:2px">${road.name}</div>
-            <div style="font-size:11px;color:#7a8eaa;font-family:'Share Tech Mono',monospace;margin-top:4px">${road.desc}</div>
-          </div>
-        `);
-      panelLayers.transit.push(dot);
+function drawTransit() {
+  var m = tabMaps.transit;
+  tabLayers.transit.forEach(function(l){m.removeLayer(l);});
+  tabLayers.transit = [];
+  var html = '<div style="font-size:9px;letter-spacing:2px;font-family:Share Tech Mono,monospace;color:var(--text-dim);margin-bottom:8px">CARRETERES DE CATALUNYA</div>';
+
+  ROADS.forEach(function(r) {
+    var col = SEV[r.sev];
+    var w = r.sev==='err' ? 7 : r.sev==='warn' ? 5 : 4;
+    var op = r.sev==='ok' ? 0.6 : 0.85;
+
+    var line = L.polyline(r.path, {color:col, weight:w, opacity:op, lineCap:'round', lineJoin:'round'})
+      .addTo(m)
+      .bindPopup('<div style="font-family:Rajdhani,sans-serif;min-width:160px">'
+        +'<div style="font-size:14px;font-weight:700;color:'+col+'">'+SEV_LABEL[r.sev]+'</div>'
+        +'<div style="font-size:13px;font-weight:600;color:#0e1c30;margin-top:2px">'+r.name+'</div>'
+        +'<div style="font-size:11px;color:#7a8eaa;margin-top:4px">'+r.desc+'</div>'
+        +'</div>');
+    tabLayers.transit.push(line);
+
+    if (r.sev !== 'ok') {
+      var mid = r.path[Math.floor(r.path.length/2)];
+      var dot = L.circleMarker(mid, {radius:7, color:'white', weight:2, fillColor:col, fillOpacity:1}).addTo(m)
+        .bindPopup('<div style="font-family:Rajdhani,sans-serif"><b style="color:'+col+'">'+r.name+'</b><br><span style="font-size:11px;color:#7a8eaa">'+r.desc+'</span></div>');
+      tabLayers.transit.push(dot);
     }
 
-    panelLayers.transit.push(line);
-
-    const midPt = road.path[Math.floor(road.path.length / 2)];
-    sideHTML += `<div class="transit-card" onclick="panelMaps.transit.setView([${midPt[0]},${midPt[1]}],13)">
-      <div class="transit-card-title">${road.name}</div>
-      <div class="transit-card-detail">${road.desc}</div>
-      <div class="transit-card-badge" style="background:${SEV_FILL[road.severity]};color:${color};border:1px solid ${SEV_BORDER[road.severity]}">${SEV_LABEL[road.severity]}</div>
-    </div>`;
+    var mid2 = r.path[Math.floor(r.path.length/2)];
+    html += '<div onclick="tabMaps.transit.setView(['+mid2[0]+','+mid2[1]+'],11)" style="background:var(--panel2);border:1px solid var(--border);border-left:3px solid '+col+';border-radius:4px;padding:7px 10px;margin-bottom:5px;cursor:pointer;">'
+      +'<div style="font-size:13px;font-weight:700;color:#0e1c30">'+r.name+'</div>'
+      +'<div style="font-size:11px;color:#7a8eaa;font-family:Share Tech Mono,monospace;margin-top:2px">'+r.desc+'</div>'
+      +'<span style="display:inline-block;margin-top:4px;font-size:9px;font-family:Share Tech Mono,monospace;padding:1px 6px;border-radius:2px;background:rgba(0,0,0,0.04);color:'+col+'">'+SEV_LABEL[r.sev]+'</span>'
+      +'</div>';
   });
 
-  sidebar.innerHTML = sideHTML;
-  const hasCrit = TRANSIT_ROADS.some(r => r.severity === 'err');
-  const hasWarn = TRANSIT_ROADS.some(r => r.severity === 'warn');
-  const badge = document.getElementById('transitBadge');
-  if (hasCrit) { badge.className='panel-tab-badge err'; badge.textContent='RETENCIONS'; }
-  else if (hasWarn) { badge.className='panel-tab-badge warn'; badge.textContent='INCIDENTS'; }
-  else { badge.className='panel-tab-badge ok'; badge.textContent='FLUID'; }
+  document.getElementById('transitSidebar').innerHTML = html;
+
+  var hasCrit = ROADS.some(function(r){return r.sev==='err';});
+  var hasWarn = ROADS.some(function(r){return r.sev==='warn';});
+  var b = document.getElementById('transitBadge');
+  if (hasCrit) { b.textContent='RETENCIONS'; b.style.background='rgba(192,39,30,0.10)'; b.style.color='var(--accent)'; b.style.borderColor='rgba(192,39,30,0.3)'; }
+  else if (hasWarn) { b.textContent='INCIDENTS'; b.style.background='rgba(154,114,0,0.10)'; b.style.color='var(--yellow)'; b.style.borderColor='rgba(154,114,0,0.3)'; }
+  else { b.textContent='FLUID'; b.style.background='rgba(24,122,64,0.10)'; b.style.color='var(--green)'; b.style.borderColor='rgba(24,122,64,0.3)'; }
 }
 
-function updateTransitTime() {
-  const now = new Date();
-  document.getElementById('transitTime').textContent =
-    String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
-}
-function refreshTransit() { if(panelMaps.transit) renderTransitLayers(); updateTransitTime(); showToast('🚗 Trànsit actualitzat', false); }
+function refreshTransit() { if(tabMaps.transit){tabLayers.transit.forEach(function(l){tabMaps.transit.removeLayer(l);});tabLayers.transit=[];drawTransit();} updateTime('transit'); showToast('🚗 Trànsit actualitzat'); }
 
-// ── METEOCAT MAP ─────────────────────────────────────────────────────────────
-const METEO_STATIONS = [
-  {lat:41.4219, lng:2.1186, name:'Tibidabo',       tmax:18, tmin:9,  wind:32, rain:0,  sky:'partly',  alert:'ok',   alertTxt:'Cap alerta'},
-  {lat:41.4295, lng:2.1488, name:"Vall d'Hebron",  tmax:20, tmin:11, wind:18, rain:0,  sky:'sunny',   alert:'ok',   alertTxt:'Cap alerta'},
-  {lat:41.3990, lng:2.1204, name:'Sarrià',          tmax:19, tmin:10, wind:22, rain:4,  sky:'cloudy',  alert:'warn', alertTxt:'Alerta groga pluja'},
-  {lat:41.4040, lng:2.1570, name:'Gràcia',          tmax:21, tmin:12, wind:14, rain:0,  sky:'sunny',   alert:'ok',   alertTxt:'Cap alerta'},
-  {lat:41.4420, lng:2.1730, name:'Nou Barris',      tmax:20, tmin:11, wind:28, rain:8,  sky:'rainy',   alert:'warn', alertTxt:'Alerta groga vent'},
-  {lat:41.3850, lng:2.1280, name:'Les Corts',       tmax:21, tmin:11, wind:12, rain:0,  sky:'sunny',   alert:'ok',   alertTxt:'Cap alerta'},
-  {lat:41.4000, lng:2.1580, name:'Eixample',        tmax:22, tmin:13, wind:10, rain:0,  sky:'sunny',   alert:'ok',   alertTxt:'Cap alerta'},
-  {lat:41.4180, lng:2.0980, name:'Collserola',      tmax:16, tmin:8,  wind:58, rain:14, sky:'stormy',  alert:'err',  alertTxt:'Alerta vermella vent'},
-  {lat:41.4380, lng:2.1620, name:'Horta',           tmax:20, tmin:11, wind:20, rain:3,  sky:'partly',  alert:'ok',   alertTxt:'Cap alerta'},
-  {lat:41.4360, lng:2.1960, name:'Sant Andreu',     tmax:21, tmin:12, wind:15, rain:0,  sky:'sunny',   alert:'ok',   alertTxt:'Cap alerta'},
-  {lat:41.3700, lng:2.1300, name:'Hospitalet',      tmax:22, tmin:13, wind:11, rain:0,  sky:'sunny',   alert:'ok',   alertTxt:'Cap alerta'},
-  {lat:41.3800, lng:2.1700, name:'Barcelona Port',  tmax:21, tmin:14, wind:24, rain:0,  sky:'partly',  alert:'ok',   alertTxt:'Cap alerta'},
+// ── METEOCAT ─────────────────────────────────────────────────────────────────
+var STATIONS = [
+  {name:'Barcelona',   lat:41.39, lng:2.15, tmax:22,tmin:14,wind:18,rain:0, sky:'sunny', alert:'ok'},
+  {name:'Tibidabo',    lat:41.42, lng:2.12, tmax:18,tmin:9, wind:32,rain:0, sky:'partly',alert:'ok'},
+  {name:'Sabadell',    lat:41.55, lng:2.10, tmax:21,tmin:10,wind:20,rain:0, sky:'sunny', alert:'ok'},
+  {name:'Granollers',  lat:41.61, lng:2.29, tmax:21,tmin:10,wind:16,rain:0, sky:'partly',alert:'ok'},
+  {name:'Mataró',      lat:41.54, lng:2.44, tmax:22,tmin:13,wind:24,rain:0, sky:'sunny', alert:'ok'},
+  {name:'Terrassa',    lat:41.56, lng:2.01, tmax:20,tmin:9, wind:22,rain:0, sky:'sunny', alert:'ok'},
+  {name:'Manresa',     lat:41.73, lng:1.83, tmax:21,tmin:8, wind:15,rain:0, sky:'partly',alert:'ok'},
+  {name:'Vic',         lat:41.93, lng:2.25, tmax:19,tmin:6, wind:18,rain:0, sky:'sunny', alert:'ok'},
+  {name:'Igualada',    lat:41.58, lng:1.62, tmax:22,tmin:9, wind:14,rain:0, sky:'sunny', alert:'ok'},
+  {name:'Lleida',      lat:41.62, lng:0.62, tmax:25,tmin:11,wind:22,rain:0, sky:'sunny', alert:'ok'},
+  {name:'Tarragona',   lat:41.12, lng:1.25, tmax:23,tmin:14,wind:20,rain:0, sky:'sunny', alert:'ok'},
+  {name:'Reus',        lat:41.15, lng:1.10, tmax:23,tmin:13,wind:18,rain:0, sky:'partly',alert:'ok'},
+  {name:'Girona',      lat:41.98, lng:2.82, tmax:21,tmin:10,wind:25,rain:0, sky:'partly',alert:'ok'},
+  {name:'Figueres',    lat:42.27, lng:2.96, tmax:20,tmin:9, wind:45,rain:0, sky:'partly',alert:'warn', alertTxt:'Alerta groga vent fort'},
+  {name:'Ripoll',      lat:42.20, lng:2.19, tmax:16,tmin:5, wind:20,rain:8, sky:'rainy', alert:'warn', alertTxt:'Alerta groga pluja'},
+  {name:'Puigcerdà',   lat:42.43, lng:1.93, tmax:12,tmin:1, wind:30,rain:12,sky:'rainy', alert:'warn', alertTxt:'Alerta groga neu/pluja'},
+  {name:'Sort',        lat:42.41, lng:1.13, tmax:14,tmin:2, wind:28,rain:5, sky:'cloudy',alert:'warn', alertTxt:'Alerta groga vent'},
+  {name:'Tremp',       lat:42.17, lng:0.90, tmax:18,tmin:6, wind:25,rain:0, sky:'partly',alert:'ok'},
+  {name:'Tortosa',     lat:40.81, lng:0.52, tmax:24,tmin:14,wind:55,rain:0, sky:'sunny', alert:'err', alertTxt:'Alerta vermella vent (Mestral)'},
+  {name:"L'Ametlla",   lat:40.90, lng:0.80, tmax:23,tmin:13,wind:50,rain:0, sky:'partly',alert:'err', alertTxt:'Alerta vermella vent'},
+  {name:'Collserola',  lat:41.42, lng:2.10, tmax:16,tmin:8, wind:58,rain:14,sky:'stormy',alert:'err', alertTxt:'Alerta vermella vent+pluja'},
+  {name:'Tarragona S', lat:41.05, lng:1.15, tmax:22,tmin:13,wind:40,rain:0, sky:'sunny', alert:'warn', alertTxt:'Alerta groga vent'},
 ];
 
-// Sky condition SVG icons (Meteocat style)
-function getSkyIcon(sky, alertColor) {
-  const sun = `<circle cx="20" cy="20" r="9" fill="#f5a623" stroke="#e8920f" stroke-width="1.5"/>
-    <g stroke="#f5a623" stroke-width="2" stroke-linecap="round">
-      <line x1="20" y1="4" x2="20" y2="8"/><line x1="20" y1="32" x2="20" y2="36"/>
-      <line x1="4" y1="20" x2="8" y2="20"/><line x1="32" y1="20" x2="36" y2="20"/>
-      <line x1="8.7" y1="8.7" x2="11.5" y2="11.5"/><line x1="28.5" y1="28.5" x2="31.3" y2="31.3"/>
-      <line x1="31.3" y1="8.7" x2="28.5" y2="11.5"/><line x1="11.5" y1="28.5" x2="8.7" y2="31.3"/>
-    </g>`;
-  const cloud = `<ellipse cx="24" cy="26" rx="12" ry="7" fill="white" stroke="#bbb" stroke-width="1.2"/>
-    <ellipse cx="20" cy="24" rx="8" ry="6" fill="white" stroke="#bbb" stroke-width="1.2"/>
-    <ellipse cx="28" cy="23" rx="7" ry="6" fill="white" stroke="#bbb" stroke-width="1.2"/>`;
-  const rain = `<line x1="18" y1="33" x2="16" y2="39" stroke="#4a90d9" stroke-width="1.8" stroke-linecap="round"/>
-    <line x1="23" y1="33" x2="21" y2="39" stroke="#4a90d9" stroke-width="1.8" stroke-linecap="round"/>
-    <line x1="28" y1="33" x2="26" y2="39" stroke="#4a90d9" stroke-width="1.8" stroke-linecap="round"/>`;
-  const wind = `<path d="M6 22 Q14 18 22 22 Q30 26 38 22" stroke="#7a8eaa" stroke-width="2" fill="none" stroke-linecap="round"/>
-    <path d="M6 27 Q12 23 20 27 Q28 31 36 27" stroke="#7a8eaa" stroke-width="1.5" fill="none" stroke-linecap="round"/>`;
+// Sky SVG icons
+var SKY_ICONS = {
+  sunny:  '<svg width="38" height="38" viewBox="0 0 38 38"><circle cx="19" cy="19" r="8" fill="#f5a623"/><g stroke="#f5a623" stroke-width="2" stroke-linecap="round"><line x1="19" y1="3" x2="19" y2="7"/><line x1="19" y1="31" x2="19" y2="35"/><line x1="3" y1="19" x2="7" y2="19"/><line x1="31" y1="19" x2="35" y2="19"/><line x1="7.5" y1="7.5" x2="10.5" y2="10.5"/><line x1="27.5" y1="27.5" x2="30.5" y2="30.5"/><line x1="30.5" y1="7.5" x2="27.5" y2="10.5"/><line x1="10.5" y1="27.5" x2="7.5" y2="30.5"/></g></svg>',
+  partly: '<svg width="38" height="38" viewBox="0 0 38 38"><circle cx="14" cy="16" r="7" fill="#f5a623"/><g stroke="#f5a623" stroke-width="1.5" stroke-linecap="round"><line x1="14" y1="4" x2="14" y2="7"/><line x1="4" y1="16" x2="7" y2="16"/><line x1="6" y1="8" x2="8.5" y2="10.5"/><line x1="22" y1="8" x2="19.5" y2="10.5"/></g><ellipse cx="23" cy="26" rx="10" ry="6" fill="white" stroke="#ccc" stroke-width="1"/><ellipse cx="19" cy="24" rx="7" ry="5.5" fill="white" stroke="#ccc" stroke-width="1"/><ellipse cx="27" cy="23" rx="7" ry="5.5" fill="white" stroke="#ccc" stroke-width="1"/></svg>',
+  cloudy: '<svg width="38" height="38" viewBox="0 0 38 38"><ellipse cx="21" cy="22" rx="13" ry="8" fill="#dde" stroke="#bbb" stroke-width="1"/><ellipse cx="16" cy="20" rx="9" ry="7" fill="#dde" stroke="#bbb" stroke-width="1"/><ellipse cx="26" cy="19" rx="8" ry="7" fill="#dde" stroke="#bbb" stroke-width="1"/></svg>',
+  rainy:  '<svg width="38" height="38" viewBox="0 0 38 38"><ellipse cx="21" cy="18" rx="13" ry="8" fill="#bbc" stroke="#999" stroke-width="1"/><ellipse cx="16" cy="16" rx="9" ry="7" fill="#bbc" stroke="#999" stroke-width="1"/><ellipse cx="26" cy="15" rx="8" ry="7" fill="#bbc" stroke="#999" stroke-width="1"/><line x1="16" y1="27" x2="14" y2="34" stroke="#4a90d9" stroke-width="2" stroke-linecap="round"/><line x1="22" y1="27" x2="20" y2="34" stroke="#4a90d9" stroke-width="2" stroke-linecap="round"/><line x1="28" y1="27" x2="26" y2="34" stroke="#4a90d9" stroke-width="2" stroke-linecap="round"/></svg>',
+  stormy: '<svg width="38" height="38" viewBox="0 0 38 38"><ellipse cx="21" cy="16" rx="13" ry="8" fill="#8899aa" stroke="#667" stroke-width="1"/><ellipse cx="16" cy="14" rx="9" ry="7" fill="#8899aa" stroke="#667" stroke-width="1"/><ellipse cx="26" cy="13" rx="8" ry="7" fill="#8899aa" stroke="#667" stroke-width="1"/><line x1="16" y1="25" x2="14" y2="30" stroke="#4a90d9" stroke-width="1.5" stroke-linecap="round"/><line x1="22" y1="25" x2="20" y2="30" stroke="#4a90d9" stroke-width="1.5" stroke-linecap="round"/><polyline points="21,28 18,33 22,33 19,38" stroke="#f5c400" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+};
 
-  const icons = {
-    sunny:   `<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">${sun}</svg>`,
-    partly:  `<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-      <g transform="translate(-4,-4) scale(0.8)">${sun}</g>${cloud}</svg>`,
-    cloudy:  `<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-      <ellipse cx="22" cy="22" rx="14" ry="9" fill="#dde" stroke="#bbb" stroke-width="1.2"/>
-      <ellipse cx="17" cy="20" rx="10" ry="8" fill="#dde" stroke="#bbb" stroke-width="1.2"/>
-      <ellipse cx="28" cy="19" rx="9" ry="8" fill="#dde" stroke="#bbb" stroke-width="1.2"/></svg>`,
-    rainy:   `<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">${cloud}${rain}</svg>`,
-    stormy:  `<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-      <ellipse cx="22" cy="18" rx="14" ry="9" fill="#aab" stroke="#888" stroke-width="1.2"/>
-      <ellipse cx="17" cy="16" rx="10" ry="8" fill="#aab" stroke="#888" stroke-width="1.2"/>
-      <ellipse cx="28" cy="15" rx="9" ry="8" fill="#aab" stroke="#888" stroke-width="1.2"/>
-      ${rain}
-      <polyline points="22,32 19,37 23,37 20,43" stroke="#f5c400" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-  };
-  return icons[sky] || icons.sunny;
+// Wind arrow SVG
+function windArrow(spd) {
+  if (spd < 20) return '';
+  var len = Math.min(spd * 0.3, 18);
+  return '<svg width="24" height="14" viewBox="0 0 24 14" style="display:inline-block;vertical-align:middle">'
+    +'<line x1="2" y1="7" x2="'+(2+len)+'" y2="7" stroke="#4a6080" stroke-width="2" stroke-linecap="round"/>'
+    +'<polyline points="'+(len-2)+',3 '+(2+len)+',7 '+(len-2)+',11" stroke="#4a6080" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
+    +'</svg>';
 }
 
-// Meteocat-style marker: red box tmax / blue box tmin + sky icon
-function makeMeteoMarker(st) {
-  const windLine = st.wind > 30
-    ? '<div style="font-size:9px;color:#4a6080;font-family:monospace;margin-top:2px">&#128168; ' + st.wind + ' km/h</div>'
-    : '';
-  const skyHtml = getSkyIcon(st.sky);
-  return '<div style="display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.18))">'
-    + '<div style="display:flex;gap:2px;margin-bottom:2px">'
-    + '<div style="background:#c0271e;color:white;font-family:monospace;font-size:12px;font-weight:700;padding:2px 5px;border-radius:3px;line-height:1.3">' + st.tmax + '</div>'
-    + '<div style="background:#1460c8;color:white;font-family:monospace;font-size:12px;font-weight:700;padding:2px 5px;border-radius:3px;line-height:1.3">' + st.tmin + '</div>'
-    + '</div>'
-    + skyHtml
-    + windLine
-    + '</div>';
-}
+var ALERT_COLOR = {ok:'#187a40', warn:'#c8930a', err:'#c0271e'};
 
-function renderMeteocatLayers() {
-  const m = panelMaps.meteocat;
-  panelLayers.meteocat.forEach(l => m.removeLayer(l));
-  panelLayers.meteocat = [];
-  const sidebar = document.getElementById('meteocatSidebar');
-  let sideHTML = '<div class="fp-sidebar-title">ESTACIONS METEOROLÒGIQUES</div>';
+function drawMeteocat() {
+  var m = tabMaps.meteocat;
+  tabLayers.meteocat.forEach(function(l){m.removeLayer(l);});
+  tabLayers.meteocat = [];
+  var html = '<div style="font-size:9px;letter-spacing:2px;font-family:Share Tech Mono,monospace;color:var(--text-dim);margin-bottom:8px">ESTACIONS METEOROLÒGIQUES</div>';
 
-  METEO_STATIONS.forEach(st => {
-    const color = SEV_COLOR[st.alert];
+  STATIONS.forEach(function(st) {
+    var col = ALERT_COLOR[st.alert];
 
-    // Alert circle only for warn/err stations
+    // Alert circle for warn/err
     if (st.alert !== 'ok') {
-      const circle = L.circle([st.lat, st.lng], {
-        radius: 5000,
-        color, fillColor: color,
+      var circle = L.circle([st.lat, st.lng], {
+        radius: 18000,
+        color: col, fillColor: col,
         fillOpacity: st.alert === 'err' ? 0.10 : 0.07,
         weight: st.alert === 'err' ? 2 : 1.5,
-        dashArray: st.alert === 'err' ? '6 4' : '4 3',
+        dashArray: st.alert === 'err' ? '8 5' : '5 4',
         opacity: 0.8
-      }).addTo(m).bindPopup(`
-        <div style="font-family:'Rajdhani',sans-serif;min-width:160px">
-          <div style="font-size:14px;font-weight:700;color:${color}">${st.alertTxt}</div>
-          <div style="font-size:12px;color:#0e1c30;margin-top:4px">${st.name}</div>
-          <div style="font-size:11px;color:#7a8eaa;font-family:'Share Tech Mono',monospace;margin-top:2px">💨 ${st.wind} km/h · 🌧 ${st.rain} mm</div>
-        </div>`);
-      panelLayers.meteocat.push(circle);
+      }).addTo(m).bindPopup('<div style="font-family:Rajdhani,sans-serif;font-size:13px"><b style="color:'+col+'">'+st.name+'</b><br>'+(st.alertTxt||'')+'</div>');
+      tabLayers.meteocat.push(circle);
     }
 
-    // Meteocat-style marker: temp boxes + sky icon
-    const iconHtml = makeMeteoMarker(st);
-    const iconW = 80, iconH = st.wind > 30 ? 72 : 60;
-    const meteoIcon = L.divIcon({
-      html: iconHtml,
-      iconSize: [iconW, iconH],
-      iconAnchor: [iconW/2, iconH/2],
-      className: ''
-    });
+    // Weather icon marker (Meteocat style)
+    var windW = windArrow(st.wind);
+    var iconHtml = '<div style="display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.2))">'
+      + '<div style="display:flex;gap:2px;margin-bottom:1px">'
+      +   '<div style="background:#c0271e;color:white;font-family:monospace;font-size:11px;font-weight:700;padding:1px 4px;border-radius:2px;line-height:1.4">'+st.tmax+'</div>'
+      +   '<div style="background:#1460c8;color:white;font-family:monospace;font-size:11px;font-weight:700;padding:1px 4px;border-radius:2px;line-height:1.4">'+st.tmin+'</div>'
+      + '</div>'
+      + (SKY_ICONS[st.sky] || SKY_ICONS.sunny)
+      + (st.wind >= 20 ? '<div style="font-size:9px;color:#4a6080;font-family:monospace;margin-top:1px">'+windW+' '+st.wind+'km/h</div>' : '')
+      + '</div>';
 
-    const marker = L.marker([st.lat, st.lng], {icon: meteoIcon, zIndexOffset: 100})
+    var iw = 70, ih = st.wind >= 20 ? 70 : 58;
+    var icon = L.divIcon({html: iconHtml, iconSize:[iw,ih], iconAnchor:[iw/2, ih/2], className:''});
+    var marker = L.marker([st.lat, st.lng], {icon: icon, zIndexOffset: 100})
       .addTo(m)
-      .bindPopup(`
-        <div style="font-family:'Rajdhani',sans-serif;min-width:170px">
-          <div style="font-size:15px;font-weight:700;color:#0e1c30">${st.name}</div>
-          <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
-            <span style="background:#c0271e;color:white;padding:2px 7px;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:13px">${st.tmax}°</span>
-            <span style="background:#1460c8;color:white;padding:2px 7px;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:13px">${st.tmin}°</span>
-          </div>
-          <div style="font-size:12px;color:#2c3a52;margin-top:6px">💨 ${st.wind} km/h &nbsp; 🌧 ${st.rain} mm</div>
-          <div style="font-size:11px;color:${color};font-family:'Share Tech Mono',monospace;margin-top:4px;letter-spacing:1px">${st.alertTxt.toUpperCase()}</div>
-        </div>`);
+      .bindPopup('<div style="font-family:Rajdhani,sans-serif;min-width:160px">'
+        +'<div style="font-size:15px;font-weight:700;color:#0e1c30">'+st.name+'</div>'
+        +'<div style="display:flex;gap:6px;margin-top:5px">'
+        +'<span style="background:#c0271e;color:white;padding:1px 6px;border-radius:2px;font-family:monospace;font-size:12px">▲'+st.tmax+'°</span>'
+        +'<span style="background:#1460c8;color:white;padding:1px 6px;border-radius:2px;font-family:monospace;font-size:12px">▼'+st.tmin+'°</span>'
+        +'</div>'
+        +'<div style="font-size:12px;color:#2c3a52;margin-top:5px">💨 '+st.wind+' km/h &nbsp; 🌧 '+st.rain+' mm</div>'
+        +(st.alertTxt ? '<div style="font-size:10px;color:'+col+';font-family:monospace;margin-top:4px;letter-spacing:1px">'+st.alertTxt.toUpperCase()+'</div>' : '')
+        +'</div>');
+    tabLayers.meteocat.push(marker);
 
-    panelLayers.meteocat.push(marker);
-
-    const skySym = {sunny:'☀️', partly:'⛅', cloudy:'☁️', rainy:'🌧', stormy:'⛈'}[st.sky] || '☀️';
-    sideHTML += `<div class="meteo-card" onclick="panelMaps.meteocat.setView([${st.lat},${st.lng}],13)">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div class="meteo-station">${st.name}</div>
-        <span style="font-size:18px">${skySym}</span>
-      </div>
-      <div class="meteo-vals">
-        <span class="meteo-val" style="color:#c0271e;font-weight:700">▲${st.tmax}°</span>
-        <span class="meteo-val" style="color:#1460c8;font-weight:700">▼${st.tmin}°</span>
-        <span class="meteo-val">💨${st.wind}km/h</span>
-        <span class="meteo-val">🌧${st.rain}mm</span>
-      </div>
-      <div style="font-size:10px;color:${color};font-family:'Share Tech Mono',monospace;margin-top:4px;letter-spacing:1px">${st.alertTxt.toUpperCase()}</div>
-    </div>`;
+    var skySym = {sunny:'☀️',partly:'⛅',cloudy:'☁️',rainy:'🌧',stormy:'⛈'}[st.sky]||'☀️';
+    html += '<div onclick="tabMaps.meteocat.setView(['+st.lat+','+st.lng+'],11)" style="background:var(--panel2);border:1px solid var(--border);border-left:3px solid '+col+';border-radius:4px;padding:7px 10px;margin-bottom:5px;cursor:pointer;">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center">'
+      +'<span style="font-size:13px;font-weight:700;color:#0e1c30">'+st.name+'</span><span style="font-size:16px">'+skySym+'</span></div>'
+      +'<div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">'
+      +'<span style="font-size:10px;font-family:monospace;color:#c0271e;font-weight:700">▲'+st.tmax+'°</span>'
+      +'<span style="font-size:10px;font-family:monospace;color:#1460c8;font-weight:700">▼'+st.tmin+'°</span>'
+      +'<span style="font-size:10px;font-family:monospace;color:#4a6080">💨'+st.wind+'km/h</span>'
+      +(st.rain>0?'<span style="font-size:10px;font-family:monospace;color:#4a90d9">🌧'+st.rain+'mm</span>':'')
+      +'</div>'
+      +(st.alertTxt?'<div style="font-size:9px;color:'+col+';font-family:monospace;margin-top:3px;letter-spacing:1px">'+st.alertTxt.toUpperCase()+'</div>':'')
+      +'</div>';
   });
 
-  sidebar.innerHTML = sideHTML;
-  const hasCrit = METEO_STATIONS.some(s => s.alert === 'err');
-  const hasWarn = METEO_STATIONS.some(s => s.alert === 'warn');
-  const badge = document.getElementById('meteocatBadge');
-  if (hasCrit) { badge.className='panel-tab-badge err'; badge.textContent='ALERTA ROJA'; }
-  else if (hasWarn) { badge.className='panel-tab-badge warn'; badge.textContent='ALERTA'; }
-  else { badge.className='panel-tab-badge ok'; badge.textContent='OK'; }
+  document.getElementById('meteocatSidebar').innerHTML = html;
+
+  var hasCrit = STATIONS.some(function(s){return s.alert==='err';});
+  var hasWarn = STATIONS.some(function(s){return s.alert==='warn';});
+  var b = document.getElementById('meteocatBadge');
+  if (hasCrit) { b.textContent='ALERTA ROJA'; b.style.background='rgba(192,39,30,0.10)'; b.style.color='var(--accent)'; b.style.borderColor='rgba(192,39,30,0.3)'; }
+  else if (hasWarn) { b.textContent='ALERTA'; b.style.background='rgba(154,114,0,0.10)'; b.style.color='var(--yellow)'; b.style.borderColor='rgba(154,114,0,0.3)'; }
+  else { b.textContent='OK'; b.style.background='rgba(24,122,64,0.10)'; b.style.color='var(--green)'; b.style.borderColor='rgba(24,122,64,0.3)'; }
 }
 
-function updateMeteocatTime() {
-  const now = new Date();
-  document.getElementById('meteocatTime').textContent =
-    String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
-}
-function refreshMeteocat() { if(panelMaps.meteocat) renderMeteocatLayers(); updateMeteocatTime(); showToast('🌦 Meteocat actualitzat', false); }
+function refreshMeteocat() { if(tabMaps.meteocat){tabLayers.meteocat.forEach(function(l){tabMaps.meteocat.removeLayer(l);});tabLayers.meteocat=[];drawMeteocat();} updateTime('meteocat'); showToast('🌦 Meteocat actualitzat'); }
 
 </script>
 <style>
@@ -380,11 +323,6 @@ function refreshMeteocat() { if(panelMaps.meteocat) renderMeteocatLayers(); upda
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
-  html, body {
-    overflow: hidden;
-    height: 100%;
-  }
-
   body {
     background: var(--bg);
     font-family: 'Rajdhani', sans-serif;
@@ -405,7 +343,6 @@ function refreshMeteocat() { if(panelMaps.meteocat) renderMeteocatLayers(); upda
     align-items: center;
     justify-content: space-between;
     position: relative;
-    z-index: 5000;
   }
   header::after {
     content: '';
@@ -481,15 +418,13 @@ function refreshMeteocat() { if(panelMaps.meteocat) renderMeteocatLayers(); upda
     align-items: center;
     gap: 8px;
     cursor: pointer;
-    padding: 5px 10px;
-    border-radius: 5px;
-    border: 1px solid var(--border);
-    background: var(--panel2);
-    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    transition: border-color 0.2s, background 0.2s;
     user-select: none;
   }
-  .tetra-trigger:hover { border-color: var(--blue); background: rgba(20,96,200,0.06); box-shadow: 0 2px 8px rgba(20,96,200,0.10); }
-  .tetra-trigger.active { border-color: var(--blue); background: rgba(20,96,200,0.08); }
+  .tetra-trigger:hover { border-color: var(--border); background: rgba(0,0,0,0.04); }
   .tetra-label {
     font-size: 11px;
     font-family: 'Share Tech Mono', monospace;
@@ -522,8 +457,41 @@ function refreshMeteocat() { if(panelMaps.meteocat) renderMeteocatLayers(); upda
   .eye-btn.active { color: var(--blue); }
 
   /* dropdown panel */
-  /* tetra-panel now uses fullscreen-panel class */
-  /* tetra-panel-header uses fp-header styles */
+  .tetra-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 560px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,123,168,0.08);
+    z-index: 5000;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(-6px);
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+  }
+  .tetra-panel.open {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: all;
+  }
+  .tetra-panel-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(20,96,200,0.04);
+  }
+  .tetra-panel-title {
+    font-size: 11px;
+    letter-spacing: 3px;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--blue);
+  }
   .tetra-legend {
     display: flex;
     gap: 12px;
@@ -541,7 +509,22 @@ function refreshMeteocat() { if(panelMaps.meteocat) renderMeteocatLayers(); upda
     border-radius: 50%;
     flex-shrink: 0;
   }
-  /* tetra body uses fp-body styles */
+  .tetra-body {
+    display: grid;
+    grid-template-columns: 1fr 200px;
+    gap: 0;
+  }
+  #tetraMap {
+    height: 240px;
+  }
+  .tetra-stats {
+    padding: 12px;
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+  }
   .tetra-stat-title {
     font-size: 9px;
     letter-spacing: 2px;
@@ -1082,288 +1065,6 @@ function refreshMeteocat() { if(panelMaps.meteocat) renderMeteocatLayers(); upda
     box-shadow: 0 4px 16px rgba(0,0,0,0.12);
   }
   .toast.show { transform: translateX(-50%) translateY(0); }
-
-  /* Leaflet incident popup custom style */
-  .incident-popup .leaflet-popup-content-wrapper {
-    padding: 0;
-    border-radius: 6px;
-    overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.18);
-    border: 1px solid #d2daea;
-  }
-  .incident-popup .leaflet-popup-content {
-    margin: 0;
-    width: 220px !important;
-  }
-  .incident-popup .leaflet-popup-tip {
-    background: #fff;
-  }
-
-  /* ── ACTIVOS DISPONIBLES DROPDOWN ── */
-  .activos-wrap {
-    position: relative;
-  }
-  .activos-dropdown {
-    position: absolute;
-    top: calc(100% + 6px);
-    left: 50%;
-    transform: translateX(-50%);
-    width: 210px;
-    background: rgba(255,255,255,0.97);
-    border: 1px solid #d2daea;
-    border-radius: 6px;
-    box-shadow: 0 6px 24px rgba(0,0,0,0.13);
-    padding: 10px;
-    display: none;
-    z-index: 2000;
-    backdrop-filter: blur(4px);
-  }
-  .activos-dropdown.open { display: block; }
-  .activos-title {
-    font-size: 9px;
-    letter-spacing: 2px;
-    font-family: 'Share Tech Mono', monospace;
-    color: #7a8eaa;
-    margin-bottom: 8px;
-    text-transform: uppercase;
-  }
-  .activo-item {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    padding: 6px 4px;
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    color: #0e1c30;
-    cursor: pointer;
-    border-radius: 4px;
-    transition: background 0.12s;
-    user-select: none;
-  }
-  .activo-item:hover { background: rgba(20,96,200,0.05); }
-  .activo-item input[type="checkbox"] {
-    width: 14px; height: 14px;
-    accent-color: var(--blue);
-    cursor: pointer;
-    flex-shrink: 0;
-    border: none;
-    padding: 0;
-    background: transparent;
-  }
-  .activo-item input[type="checkbox"]:focus { box-shadow: none; }
-  .activo-dot {
-    width: 9px; height: 9px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    border: 1.5px solid rgba(0,0,0,0.15);
-  }
-  .activo-count {
-    margin-left: auto;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 11px;
-    color: #7a8eaa;
-    background: #f4f6fb;
-    border: 1px solid #d2daea;
-    border-radius: 10px;
-    padding: 0 6px;
-    min-width: 20px;
-    text-align: center;
-  }
-  .activos-sep {
-    height: 1px;
-    background: #d2daea;
-    margin: 8px 0;
-  }
-  .activos-legend {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-  }
-  .leg-item {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 10px;
-    font-family: 'Share Tech Mono', monospace;
-    color: #7a8eaa;
-  }
-  .leg-dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-  }
-  .leg-dot.libre   { background: #187a40; }
-  .leg-dot.ocupado { background: #9a7200; }
-  .leg-dot.enruta  { background: #1460c8; }
-
-
-  /* TETRA Tower SVG icon on map */
-  .tetra-tower-icon {
-    background: none;
-    border: none;
-  }
-
-
-  /* ── PANEL TAB TRIGGERS (header) ── */
-  .panel-tab-wrapper { position: relative; }
-  .panel-tab-trigger {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    cursor: pointer;
-    padding: 5px 10px;
-    border-radius: 5px;
-    border: 1px solid var(--border);
-    background: var(--panel2);
-    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
-    user-select: none;
-  }
-  .panel-tab-trigger:hover { border-color: var(--blue); background: rgba(20,96,200,0.06); box-shadow: 0 2px 8px rgba(20,96,200,0.08); }
-  .panel-tab-trigger.active { border-color: var(--blue); background: rgba(20,96,200,0.08); }
-  .panel-tab-icon { font-size: 15px; }
-  .panel-tab-label {
-    font-size: 11px;
-    font-family: 'Share Tech Mono', monospace;
-    color: var(--text-dim);
-    letter-spacing: 1px;
-  }
-  .panel-tab-badge {
-    font-size: 9px;
-    font-family: 'Share Tech Mono', monospace;
-    padding: 2px 6px;
-    border-radius: 3px;
-    letter-spacing: 1px;
-    font-weight: 600;
-  }
-  .panel-tab-badge.ok   { background: rgba(24,122,64,0.10); color: var(--green); border: 1px solid rgba(24,122,64,0.3); }
-  .panel-tab-badge.warn { background: rgba(154,114,0,0.10); color: var(--yellow); border: 1px solid rgba(154,114,0,0.3); }
-  .panel-tab-badge.err  { background: rgba(192,39,30,0.10); color: var(--accent); border: 1px solid rgba(192,39,30,0.3); }
-
-  /* ── FULLSCREEN PANELS ── */
-  .fullscreen-panel {
-    position: fixed;
-    top: 56px;
-    left: 0; right: 0;
-    width: 100%;
-    height: calc(100vh - 56px);
-    background: var(--panel);
-    border-top: 1px solid var(--border);
-    box-shadow: 0 4px 24px rgba(0,0,0,0.10);
-    z-index: 4000;
-    display: flex;
-    flex-direction: column;
-    transform: translateY(-110%);
-    visibility: hidden;
-    pointer-events: none;
-    transition: transform 0.35s cubic-bezier(0.4,0,0.2,1), visibility 0s linear 0.35s;
-  }
-  .fullscreen-panel.open {
-    transform: translateY(0);
-    visibility: visible;
-    pointer-events: all;
-    transition: transform 0.35s cubic-bezier(0.4,0,0.2,1), visibility 0s linear 0s;
-  }
-  .fp-header {
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    background: rgba(20,96,200,0.03);
-    flex-shrink: 0;
-  }
-  .fp-title {
-    font-size: 11px;
-    letter-spacing: 3px;
-    font-family: 'Share Tech Mono', monospace;
-    color: var(--blue);
-    flex: 1;
-  }
-  .fp-legend { display: flex; gap: 12px; }
-  .fp-leg-item {
-    display: flex; align-items: center; gap: 5px;
-    font-size: 10px; font-family: 'Share Tech Mono', monospace; color: var(--text-dim);
-  }
-  .fp-leg-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .fp-close {
-    background: none;
-    border: 1px solid var(--border);
-    color: var(--text-dim);
-    padding: 4px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 11px;
-    transition: all 0.15s;
-  }
-  .fp-close:hover { border-color: var(--accent); color: var(--accent); }
-  .fp-body {
-    display: grid;
-    grid-template-columns: 1fr 280px;
-    flex: 1;
-    overflow: hidden;
-    min-height: 0;
-  }
-  .fp-sidebar {
-    border-left: 1px solid var(--border);
-    padding: 12px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .fp-sidebar-title {
-    font-size: 9px;
-    letter-spacing: 2px;
-    font-family: 'Share Tech Mono', monospace;
-    color: var(--text-dim);
-    margin-bottom: 4px;
-    text-transform: uppercase;
-  }
-  .fp-footer {
-    padding: 6px 16px;
-    border-top: 1px solid var(--border);
-    font-size: 10px;
-    font-family: 'Share Tech Mono', monospace;
-    color: var(--text-dim);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-shrink: 0;
-  }
-  .fp-refresh { color: var(--blue); cursor: pointer; letter-spacing: 1px; }
-  .fp-refresh:hover { opacity: 0.7; }
-
-  /* Traffic incident cards */
-  .transit-card {
-    background: var(--panel2);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 8px 10px;
-    font-family: 'Rajdhani', sans-serif;
-  }
-  .transit-card-title { font-size: 13px; font-weight: 700; color: var(--text-bright); }
-  .transit-card-detail { font-size: 11px; color: var(--text-dim); font-family: 'Share Tech Mono', monospace; margin-top: 2px; }
-  .transit-card-badge {
-    display: inline-block; margin-top: 5px;
-    font-size: 9px; padding: 1px 6px; border-radius: 2px;
-    font-family: 'Share Tech Mono', monospace; letter-spacing: 1px;
-  }
-
-  /* Meteo cards */
-  .meteo-card {
-    background: var(--panel2);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 8px 10px;
-  }
-  .meteo-station { font-size: 13px; font-weight: 700; color: var(--text-bright); font-family: 'Rajdhani', sans-serif; }
-  .meteo-vals { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
-  .meteo-val {
-    font-size: 10px; font-family: 'Share Tech Mono', monospace; color: var(--text-dim);
-    background: var(--panel); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px;
-  }
-
 </style>
 </head>
 <body>
@@ -1396,95 +1097,77 @@ function refreshMeteocat() { if(panelMaps.meteocat) renderMeteocatLayers(); upda
           </svg>
         </button>
       </div>
-    </div>
-
-    <!-- TRÀNSIT PANEL TRIGGER -->
-    <div class="panel-tab-wrapper" id="transitWrapper">
-      <div class="panel-tab-trigger" onclick="togglePanelTab('transit')">
-        <span class="panel-tab-icon">🚗</span>
-        <span class="panel-tab-label">TRÀNSIT</span>
-        <div class="panel-tab-badge ok" id="transitBadge">FLUID</div>
+      <div class="tetra-panel" id="tetraPanel">
+        <div class="tetra-panel-header">
+          <div class="tetra-panel-title">▸ COBERTURA RED TETRA — BASES ACTIVAS</div>
+          <div class="tetra-legend">
+            <div class="tetra-legend-item"><div class="legend-dot" style="background:#00e676;box-shadow:0 0 6px #00e676"></div>Disponible</div>
+            <div class="tetra-legend-item"><div class="legend-dot" style="background:#ffd600;box-shadow:0 0 6px #ffd600"></div>Congestionada</div>
+            <div class="tetra-legend-item"><div class="legend-dot" style="background:#e84040;box-shadow:0 0 6px #e84040"></div>Sin cobertura</div>
+          </div>
+        </div>
+        <div class="tetra-body">
+          <div id="tetraMap"></div>
+          <div class="tetra-stats" id="tetraStats"></div>
+        </div>
+        <div class="tetra-footer">
+          <span>Última actualización: <span id="tetraTime">—</span></span>
+          <span class="tetra-refresh" onclick="refreshTetra()">↺ ACTUALIZAR</span>
+        </div>
       </div>
     </div>
 
-    <!-- METEOCAT PANEL TRIGGER -->
-    <div class="panel-tab-wrapper" id="meteocatWrapper">
-      <div class="panel-tab-trigger" onclick="togglePanelTab('meteocat')">
-        <span class="panel-tab-icon">🌦</span>
-        <span class="panel-tab-label">METEOCAT</span>
-        <div class="panel-tab-badge warn" id="meteocatBadge">ALERTA</div>
+    <!-- TRÀNSIT TAB -->
+    <div style="position:relative" id="transitWrapper">
+      <div onclick="toggleTab('transit')" id="transitTrigger" style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:5px 10px;border-radius:5px;border:1px solid var(--border);background:var(--panel2);transition:all 0.2s;user-select:none;">
+        <span style="font-size:14px">🚗</span>
+        <span style="font-size:10px;font-family:'Share Tech Mono',monospace;color:var(--text-dim);letter-spacing:1px">TRÀNSIT</span>
+        <span id="transitBadge" style="font-size:9px;font-family:'Share Tech Mono',monospace;padding:2px 6px;border-radius:3px;font-weight:600;background:rgba(192,39,30,0.10);color:var(--accent);border:1px solid rgba(192,39,30,0.3)">RETENCIONS</span>
       </div>
     </div>
-
+    <!-- METEOCAT TAB -->
+    <div style="position:relative" id="meteocatWrapper">
+      <div onclick="toggleTab('meteocat')" id="meteocatTrigger" style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:5px 10px;border-radius:5px;border:1px solid var(--border);background:var(--panel2);transition:all 0.2s;user-select:none;">
+        <span style="font-size:14px">🌦</span>
+        <span style="font-size:10px;font-family:'Share Tech Mono',monospace;color:var(--text-dim);letter-spacing:1px">METEOCAT</span>
+        <span id="meteocatBadge" style="font-size:9px;font-family:'Share Tech Mono',monospace;padding:2px 6px;border-radius:3px;font-weight:600;background:rgba(154,114,0,0.10);color:var(--yellow);border:1px solid rgba(154,114,0,0.3)">ALERTA</span>
+      </div>
+    </div>
     <div class="clock" id="clock">00:00:00</div>
   </div>
 </header>
 
-
-<!-- ── TETRA FULLSCREEN PANEL ── -->
-<div class="fullscreen-panel" id="tetraPanel">
-  <div class="fp-header">
-    <div class="fp-title">▸ COBERTURA RED TETRA — BASES ACTIVES</div>
-    <div class="fp-legend">
-      <span class="fp-leg-item"><span class="fp-leg-dot" style="background:#187a40"></span>Disponible</span>
-      <span class="fp-leg-item"><span class="fp-leg-dot" style="background:#9a7200"></span>Congestionada</span>
-      <span class="fp-leg-item"><span class="fp-leg-dot" style="background:#c0271e"></span>Sin cobertura</span>
-    </div>
-    <button class="fp-close" onclick="toggleTetra()">✕ CERRAR</button>
+<!-- TRANSIT PANEL -->
+<div id="transitPanel" style="position:fixed;top:56px;left:0;right:0;height:calc(100vh - 56px);background:var(--panel);z-index:4000;display:flex;flex-direction:column;transform:translateY(-110%);visibility:hidden;pointer-events:none;transition:transform 0.35s cubic-bezier(0.4,0,0.2,1),visibility 0s linear 0.35s;border-top:1px solid var(--border);">
+  <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px;background:rgba(20,96,200,0.03);flex-shrink:0;">
+    <div style="font-size:11px;letter-spacing:3px;font-family:'Share Tech Mono',monospace;color:var(--blue);flex:1;">🚗 ESTAT DEL TRÀNSIT — CATALUNYA</div>
+    <span style="font-size:10px;font-family:'Share Tech Mono',monospace;color:var(--text-dim)">🟢 Fluid &nbsp; 🟡 Dens &nbsp; 🔴 Retencions</span>
+    <button onclick="toggleTab('transit')" style="background:none;border:1px solid var(--border);color:var(--text-dim);padding:4px 12px;border-radius:4px;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:11px;transition:all 0.15s">✕ TANCAR</button>
   </div>
-  <div class="fp-body">
-    <div id="tetraMap" style="flex:1;min-height:0"></div>
-    <div class="fp-sidebar" id="tetraStats"></div>
+  <div style="display:grid;grid-template-columns:1fr 280px;flex:1;overflow:hidden;min-height:0;">
+    <div id="transitMap" style="width:100%;height:100%;"></div>
+    <div id="transitSidebar" style="border-left:1px solid var(--border);padding:12px;overflow-y:auto;font-family:'Rajdhani',sans-serif;"></div>
   </div>
-  <div class="fp-footer">
-    <span>Última actualización: <span id="tetraTime">—</span></span>
-    <span class="fp-refresh" onclick="refreshTetra()">↺ ACTUALIZAR</span>
+  <div style="padding:6px 16px;border-top:1px solid var(--border);font-size:10px;font-family:'Share Tech Mono',monospace;color:var(--text-dim);display:flex;justify-content:space-between;flex-shrink:0;">
+    <span>Font: Servei Català de Trànsit · <span id="transitTime">—</span></span>
+    <span onclick="refreshTransit()" style="color:var(--blue);cursor:pointer">↺ ACTUALITZAR</span>
   </div>
 </div>
 
-<!-- ── TRÀNSIT FULLSCREEN PANEL ── -->
-<div class="fullscreen-panel" id="transitPanel">
-  <div class="fp-header">
-    <div class="fp-title">🚗 ESTAT DEL TRÀNSIT — ÀREA METROPOLITANA</div>
-    <div class="fp-legend">
-      <span class="fp-leg-item"><span class="fp-leg-dot" style="background:#187a40"></span>Fluid</span>
-      <span class="fp-leg-item"><span class="fp-leg-dot" style="background:#9a7200"></span>Dens</span>
-      <span class="fp-leg-item"><span class="fp-leg-dot" style="background:#c0271e"></span>Retencions</span>
-    </div>
-    <button class="fp-close" onclick="togglePanelTab('transit')">✕ TANCAR</button>
+<!-- METEOCAT PANEL -->
+<div id="meteocatPanel" style="position:fixed;top:56px;left:0;right:0;height:calc(100vh - 56px);background:var(--panel);z-index:4000;display:flex;flex-direction:column;transform:translateY(-110%);visibility:hidden;pointer-events:none;transition:transform 0.35s cubic-bezier(0.4,0,0.2,1),visibility 0s linear 0.35s;border-top:1px solid var(--border);">
+  <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px;background:rgba(20,96,200,0.03);flex-shrink:0;">
+    <div style="font-size:11px;letter-spacing:3px;font-family:'Share Tech Mono',monospace;color:var(--blue);flex:1;">🌦 METEOCAT — PREDICCIÓ I ALERTES — CATALUNYA</div>
+    <span style="font-size:10px;font-family:'Share Tech Mono',monospace;color:var(--text-dim)">🟢 Cap alerta &nbsp; 🟡 Alerta groga &nbsp; 🔴 Alerta vermella</span>
+    <button onclick="toggleTab('meteocat')" style="background:none;border:1px solid var(--border);color:var(--text-dim);padding:4px 12px;border-radius:4px;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:11px;transition:all 0.15s">✕ TANCAR</button>
   </div>
-  <div class="fp-body">
-    <div id="transitMap" style="flex:1;min-height:0"></div>
-    <div class="fp-sidebar" id="transitSidebar">
-      <div class="fp-sidebar-title">INCIDÈNCIES DE TRÀNSIT</div>
-    </div>
+  <div style="display:grid;grid-template-columns:1fr 280px;flex:1;overflow:hidden;min-height:0;">
+    <div id="meteocatMap" style="width:100%;height:100%;"></div>
+    <div id="meteocatSidebar" style="border-left:1px solid var(--border);padding:12px;overflow-y:auto;font-family:'Rajdhani',sans-serif;"></div>
   </div>
-  <div class="fp-footer">
-    <span>Font: Servei Català de Trànsit · Actualitzat: <span id="transitTime">—</span></span>
-    <span class="fp-refresh" onclick="refreshTransit()">↺ ACTUALITZAR</span>
-  </div>
-</div>
-
-<!-- ── METEOCAT FULLSCREEN PANEL ── -->
-<div class="fullscreen-panel" id="meteocatPanel">
-  <div class="fp-header">
-    <div class="fp-title">🌦 METEOCAT — PREDICCIÓ I ALERTES</div>
-    <div class="fp-legend">
-      <span class="fp-leg-item"><span class="fp-leg-dot" style="background:#187a40"></span>Cap alerta</span>
-      <span class="fp-leg-item"><span class="fp-leg-dot" style="background:#9a7200"></span>Alerta groga</span>
-      <span class="fp-leg-item"><span class="fp-leg-dot" style="background:#c0271e"></span>Alerta vermella</span>
-    </div>
-    <button class="fp-close" onclick="togglePanelTab('meteocat')">✕ TANCAR</button>
-  </div>
-  <div class="fp-body">
-    <div id="meteocatMap" style="flex:1;min-height:0"></div>
-    <div class="fp-sidebar" id="meteocatSidebar">
-      <div class="fp-sidebar-title">ALERTES ACTIVES</div>
-    </div>
-  </div>
-  <div class="fp-footer">
-    <span>Font: Meteocat · Actualitzat: <span id="meteocatTime">—</span></span>
-    <span class="fp-refresh" onclick="refreshMeteocat()">↺ ACTUALITZAR</span>
+  <div style="padding:6px 16px;border-top:1px solid var(--border);font-size:10px;font-family:'Share Tech Mono',monospace;color:var(--text-dim);display:flex;justify-content:space-between;flex-shrink:0;">
+    <span>Font: Meteocat · <span id="meteocatTime">—</span></span>
+    <span onclick="refreshMeteocat()" style="color:var(--blue);cursor:pointer">↺ ACTUALITZAR</span>
   </div>
 </div>
 
@@ -1582,46 +1265,7 @@ function refreshMeteocat() { if(panelMaps.meteocat) renderMeteocatLayers(); upda
     <div class="map-toolbar" id="mapToolbar">
       <button class="map-btn" id="toolCaller" onclick="setMapMode('caller')">📍 Llamante</button>
       <button class="map-btn" id="toolIncident" onclick="setMapMode('incident')">🚨 Incidencia</button>
-
-      <!-- Activos disponibles dropdown -->
-      <div class="activos-wrap" id="activosWrap">
-        <button class="map-btn" id="toolActivos" onclick="toggleActivos(event)">
-          🟢 Activos Disponibles ▾
-        </button>
-        <div class="activos-dropdown" id="activosDropdown">
-          <div class="activos-title">FILTRAR ACTIVOS</div>
-          <label class="activo-item">
-            <input type="checkbox" checked onchange="toggleActivoLayer('ambulancias', this.checked)">
-            <span class="activo-dot" style="background:#187a40"></span>
-            🚑 Ambulancias
-            <span class="activo-count" id="countAmbulancias">0</span>
-          </label>
-          <label class="activo-item">
-            <input type="checkbox" checked onchange="toggleActivoLayer('policias', this.checked)">
-            <span class="activo-dot" style="background:#1460c8"></span>
-            🚔 Policías
-            <span class="activo-count" id="countPolicias">0</span>
-          </label>
-          <label class="activo-item">
-            <input type="checkbox" checked onchange="toggleActivoLayer('bomberos', this.checked)">
-            <span class="activo-dot" style="background:#c84a10"></span>
-            🚒 Bomberos
-            <span class="activo-count" id="countBomberos">0</span>
-          </label>
-          <label class="activo-item">
-            <input type="checkbox" checked onchange="toggleActivoLayer('forestals', this.checked)">
-            <span class="activo-dot" style="background:#4a7c2f"></span>
-            🌲 Ag. Forestal
-            <span class="activo-count" id="countForestals">0</span>
-          </label>
-          <div class="activos-sep"></div>
-          <div class="activos-legend">
-            <span class="leg-item"><span class="leg-dot libre"></span>Libre</span>
-            <span class="leg-item"><span class="leg-dot ocupado"></span>Ocupado</span>
-            <span class="leg-item"><span class="leg-dot enruta"></span>En ruta</span>
-          </div>
-        </div>
-      </div>
+      <button class="map-btn" onclick="setMapMode(null)">✕ Modo Normal</button>
     </div>
     <div id="map"></div>
   </div>
@@ -1754,30 +1398,7 @@ function addIncidenceMarker(lat, lng) {
 
   const marker = L.marker([lat, lng], {icon: makeIncidentIcon()})
     .addTo(map)
-    .bindPopup(`
-      <div style="width:220px;font-family:'Rajdhani',sans-serif;overflow:hidden;border-radius:4px">
-        <div style="position:relative;height:110px;overflow:hidden;margin:-1px -1px 0 -1px">
-          <img
-            src="data:image/jpeg;base64,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"
-            style="width:100%;height:110px;object-fit:cover;object-position:center top;display:block"
-            alt="Tibidabo"
-          />
-          <div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(0,0,0,0.55) 100%)"></div>
-          <div style="position:absolute;bottom:6px;left:8px;color:white;font-size:13px;font-weight:700;letter-spacing:1px;text-shadow:0 1px 3px rgba(0,0,0,0.8)">
-            🚨 INCIDÈNCIA ACTIVA
-          </div>
-        </div>
-        <div style="padding:8px 10px;background:#fff;border-top:2px solid #c0271e">
-          <div style="font-size:15px;font-weight:700;color:#0e1c30;margin-bottom:4px">${label}</div>
-          <div style="font-size:11px;color:#7a8eaa;font-family:'Share Tech Mono',monospace">
-            LAT ${lat.toFixed(5)} &nbsp;|&nbsp; LNG ${lng.toFixed(5)}
-          </div>
-          <div style="font-size:11px;color:#7a8eaa;font-family:'Share Tech Mono',monospace;margin-top:2px">
-            📍 Tibidabo · Vallvidrera · Barcelona
-          </div>
-        </div>
-      </div>
-    `, {maxWidth: 240, className: 'incident-popup'});
+    .bindPopup(`<b style="color:#c0271e">🚨 ${label}</b><br>${lat.toFixed(5)}, ${lng.toFixed(5)}`);
 
   marker.on('click', () => selectIncidence(idx));
 
@@ -1841,9 +1462,9 @@ const RESOURCES = {
     {name:'UVI Móvil 05', detail:'Soporte Vital Avançat', status:'libre', base:[41.4380, 2.1600]},
   ],
   policias: [
-    {name:'Mossos d\'Esquadra P-23', detail:'Comissaria Sarrià-St.Gervasi', status:'libre', base:[41.4010, 2.1320]},
+    {name:'Mossos d'Esquadra P-23', detail:'Comissaria Sarrià-St.Gervasi', status:'libre', base:[41.4010, 2.1320]},
     {name:'Guàrdia Urbana GU-08', detail:'Unitat Territori Nord', status:'libre', base:[41.4200, 2.1580]},
-    {name:'Mossos d\'Esquadra P-17', detail:"Comissaria Vall d'Hebron", status:'ocupado', base:[41.4290, 2.1490]},
+    {name:'Mossos d'Esquadra P-17', detail:'Comissaria Vall d'Hebron', status:'ocupado', base:[41.4290, 2.1490]},
     {name:'GEO Unitat 2', detail:'Grup Especial Operacions', status:'libre', base:[41.4350, 2.1200]},
     {name:'Guàrdia Urbana GU-15', detail:'Unitat Forestal', status:'en-ruta', base:[41.4150, 2.1100]},
   ],
@@ -1852,13 +1473,6 @@ const RESOURCES = {
     {name:'Bombers B-09', detail:'Rescat Tècnic Muntanya', status:'libre', base:[41.4060, 2.1250]},
     {name:'Bombers B-02', detail:'Extinció i Rescat', status:'ocupado', base:[41.4340, 2.1560]},
     {name:'BRIF Unitat 1', detail:'Brigada Forestal Tibidabo', status:'libre', base:[41.4420, 2.1180]},
-  ],
-  forestals: [
-    {name:'Agent Forestal AF-01', detail:'Parc de Collserola', status:'libre', base:[41.4310, 2.1120]},
-    {name:'Agent Forestal AF-02', detail:'Zona Tibidabo Nord', status:'libre', base:[41.4450, 2.1190]},
-    {name:'Agent Forestal AF-03', detail:'Vallvidrera', status:'ocupado', base:[41.4180, 2.0940]},
-    {name:'Agent Forestal AF-04', detail:'Parc de Collserola Est', status:'libre', base:[41.4260, 2.1060]},
-    {name:'Agent Forestal AF-05', detail:'Serra de Collserola', status:'en-ruta', base:[41.4380, 2.1030]},
   ]
 };
 
@@ -1873,8 +1487,7 @@ function dist(lat1, lng1, lat2, lng2) {
 const RESOURCE_ICONS = {
   ambulancias: {icon:'🚑', color:'#187a40'},
   policias: {icon:'🚔', color:'#1460c8'},
-  bomberos: {icon:'🚒', color:'#c84a10'},
-  forestals: {icon:'🌲', color:'#4a7c2f'}
+  bomberos: {icon:'🚒', color:'#c84a10'}
 };
 
 const STATUS_LABELS = {libre:'LIBRE', ocupado:'OCUPADO', 'en-ruta':'EN RUTA'};
@@ -2030,7 +1643,7 @@ let tetraLayers = [];
 
 const TETRA_BASES = [
   {id:'T01', name:'Base TETRA Tibidabo',          lat:41.4219, lng:2.1186, status:'ok',   load:22},
-  {id:'T02', name:"Base TETRA Vall d'Hebron",    lat:41.4295, lng:2.1488, status:'ok',   load:38},
+  {id:'T02', name:'Base TETRA Vall d'Hebron',    lat:41.4295, lng:2.1488, status:'ok',   load:38},
   {id:'T03', name:'Base TETRA Sarrià',            lat:41.3990, lng:2.1204, status:'warn', load:74},
   {id:'T04', name:'Base TETRA Gràcia',            lat:41.4040, lng:2.1570, status:'ok',   load:29},
   {id:'T05', name:'Base TETRA Nou Barris',        lat:41.4420, lng:2.1730, status:'err',  load:100},
@@ -2046,13 +1659,13 @@ const TETRA_STATUS_LABEL = {ok:'LIBRE', warn:'CONGESTIONADA', err:'SIN COBERTURA
 const TETRA_RADIUS_KM = 12; // coverage radius per base
 
 function toggleTetra() {
-  // Close other panels first
-  Object.keys(panelState).forEach(k => {
-    if (panelState[k]) {
-      panelState[k] = false;
-      document.getElementById(k + 'Panel').classList.remove('open');
-      const w = document.getElementById(k + 'Wrapper');
-      if (w) w.querySelector('.panel-tab-trigger').classList.remove('active');
+  Object.keys(tabOpen).forEach(function(k) {
+    if (tabOpen[k]) {
+      tabOpen[k] = false;
+      var p = document.getElementById(k + 'Panel');
+      if(p){p.style.transform='translateY(-110%)';p.style.visibility='hidden';p.style.pointerEvents='none';p.style.transition='transform 0.35s cubic-bezier(0.4,0,0.2,1), visibility 0s linear 0.35s';}
+      var t = document.getElementById(k + 'Trigger');
+      if(t){t.style.borderColor='var(--border)';t.style.background='var(--panel2)';}
     }
   });
   tetraOpen = !tetraOpen;
@@ -2060,25 +1673,33 @@ function toggleTetra() {
   document.getElementById('eyeOpen').style.display  = tetraOpen ? 'none' : 'block';
   document.getElementById('eyeClosed').style.display = tetraOpen ? 'block' : 'none';
   document.getElementById('tetraEye').classList.toggle('active', tetraOpen);
-  document.querySelector('.tetra-trigger').classList.toggle('active', tetraOpen);
 
-  if (tetraOpen && !tetraMap) {
-    initTetraMap();
-  } else if (tetraOpen && tetraMap) {
-    setTimeout(() => tetraMap.invalidateSize(), 360);
+  if (tetraOpen && !tetraMap) initTetraMap();
+
+  // Close when clicking outside
+  if (tetraOpen) {
+    setTimeout(() => document.addEventListener('click', tetraOutsideClick), 10);
+  } else {
+    document.removeEventListener('click', tetraOutsideClick);
   }
 }
 
 function tetraOutsideClick(e) {
-  // Side panel is fullscreen, no outside click close needed
-  // User closes via button only
+  if (!document.getElementById('tetraWrapper').contains(e.target)) {
+    tetraOpen = false;
+    document.getElementById('tetraPanel').classList.remove('open');
+    document.getElementById('eyeOpen').style.display  = 'block';
+    document.getElementById('eyeClosed').style.display = 'none';
+    document.getElementById('tetraEye').classList.remove('active');
+    document.removeEventListener('click', tetraOutsideClick);
+  }
 }
 
 function initTetraMap() {
   tetraMap = L.map('tetraMap', {
     center: [41.4200, 2.1500],
-    zoom: 11,
-    zoomControl: true,
+    zoom: 10,
+    zoomControl: false,
     attributionControl: false
   });
 
@@ -2090,8 +1711,7 @@ function initTetraMap() {
   renderTetraStats();
   updateTetraTime();
 
-  setTimeout(() => tetraMap.invalidateSize(), 100);
-  setTimeout(() => tetraMap.invalidateSize(), 400);
+  setTimeout(() => tetraMap.invalidateSize(), 50);
 }
 
 function renderTetraLayers() {
@@ -2100,68 +1720,44 @@ function renderTetraLayers() {
 
   TETRA_BASES.forEach(base => {
     const color = TETRA_COLOR[base.status];
-    const fillOpacity = base.status === 'ok' ? 0.13 : base.status === 'warn' ? 0.11 : 0.07;
-    const dashArray = base.status === 'err' ? '6 5' : null;
 
-    // Coverage area circle
+    // Coverage circle
     const circle = L.circle([base.lat, base.lng], {
       radius: TETRA_RADIUS_KM * 1000,
       color: color,
       fillColor: color,
-      fillOpacity: fillOpacity,
-      weight: base.status === 'err' ? 1.5 : 2,
-      dashArray: dashArray,
-      opacity: 0.8
+      fillOpacity: base.status === 'err' ? 0.06 : 0.10,
+      weight: 1.5,
+      dashArray: base.status === 'err' ? '5 5' : null,
+      opacity: 0.7
     }).addTo(tetraMap)
       .bindPopup(`
-        <div style="font-family:'Share Tech Mono',monospace;font-size:11px;padding:4px">
-          <div style="color:${color};font-weight:700;margin-bottom:4px">${base.id} — ${base.name}</div>
-          <div style="color:#2c3a52">Estado: <b style="color:${color}">${TETRA_STATUS_LABEL[base.status]}</b></div>
-          <div style="color:#2c3a52">Carga canal: <b>${base.load}%</b></div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:${color}">
+          <b>${base.id}</b> — ${base.name}<br>
+          Estado: <b>${TETRA_STATUS_LABEL[base.status]}</b><br>
+          Carga: ${base.load}%
         </div>
       `);
 
-    // SVG tower icon
-    const towerSVG = `
-      <svg width="28" height="34" viewBox="0 0 28 34" xmlns="http://www.w3.org/2000/svg">
-        <!-- Tower legs -->
-        <line x1="14" y1="4" x2="4" y2="28" stroke="${color}" stroke-width="2.2" stroke-linecap="round"/>
-        <line x1="14" y1="4" x2="24" y2="28" stroke="${color}" stroke-width="2.2" stroke-linecap="round"/>
-        <!-- Cross braces -->
-        <line x1="7"  y1="14" x2="21" y2="14" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="5"  y1="22" x2="23" y2="22" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="7"  y1="14" x2="21" y2="22" stroke="${color}" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
-        <line x1="21" y1="14" x2="7"  y2="22" stroke="${color}" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
-        <!-- Mast top -->
-        <line x1="14" y1="0" x2="14" y2="8" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/>
-        <!-- Signal arcs (only if not err) -->
-        ${base.status !== 'err' ? `
-        <path d="M 9 3 Q 14 -1 19 3" stroke="${color}" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.7"/>
-        <path d="M 6 6 Q 14 -4 22 6" stroke="${color}" stroke-width="1.2" fill="none" stroke-linecap="round" opacity="0.4"/>
-        ` : `
-        <line x1="10" y1="0" x2="18" y2="8" stroke="${color}" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
-        <line x1="18" y1="0" x2="10" y2="8" stroke="${color}" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
-        `}
-        <!-- Base platform -->
-        <rect x="8" y="27" width="12" height="3" rx="1.5" fill="${color}" opacity="0.7"/>
-        <!-- Status dot -->
-        <circle cx="14" cy="32" r="2.5" fill="${color}" stroke="white" stroke-width="1.5"/>
-      </svg>`;
-
+    // Tower marker
     const towerIcon = L.divIcon({
-      html: towerSVG,
-      iconSize: [28, 34],
-      iconAnchor: [14, 32],
-      className: 'tetra-tower-icon'
+      html: `<div style="
+        width:12px;height:12px;
+        background:${color};
+        border:2px solid rgba(255,255,255,0.8);
+        border-radius:50%;
+        box-shadow:0 0 8px ${color},0 0 2px rgba(0,0,0,0.15);
+      "></div>`,
+      iconSize:[12,12], iconAnchor:[6,6], className:''
     });
 
-    const marker = L.marker([base.lat, base.lng], {icon: towerIcon, zIndexOffset: 100})
+    const marker = L.marker([base.lat, base.lng], {icon: towerIcon})
       .addTo(tetraMap)
       .bindPopup(`
-        <div style="font-family:'Share Tech Mono',monospace;font-size:11px;padding:4px">
-          <div style="color:${color};font-weight:700;margin-bottom:4px">${base.id} — ${base.name}</div>
-          <div style="color:#2c3a52">Estado: <b style="color:${color}">${TETRA_STATUS_LABEL[base.status]}</b></div>
-          <div style="color:#2c3a52">Carga canal: <b>${base.load}%</b></div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:${color}">
+          <b>${base.id}</b> — ${base.name}<br>
+          Estado: <b>${TETRA_STATUS_LABEL[base.status]}</b><br>
+          Carga canal: ${base.load}%
         </div>
       `);
 
@@ -2236,303 +1832,6 @@ function showToast(msg, isError = false) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
 }
-
-// ────────────────────────── ACTIVOS DISPONIBLES
-let activosOpen = false;
-let activoMapMarkers = { ambulancias: [], policias: [], bomberos: [], forestals: [] };
-let activoLayerVisible = { ambulancias: true, policias: true, bomberos: true, forestals: true };
-
-const STATUS_BORDER = { libre: '#187a40', ocupado: '#9a7200', 'en-ruta': '#1460c8' };
-
-function toggleActivos(e) {
-  e.stopPropagation();
-  activosOpen = !activosOpen;
-  document.getElementById('activosDropdown').classList.toggle('open', activosOpen);
-  if (activosOpen) {
-    renderActivosOnMap();
-    setTimeout(() => document.addEventListener('click', activosOutside), 10);
-  } else {
-    document.removeEventListener('click', activosOutside);
-  }
-}
-
-function activosOutside(e) {
-  if (!document.getElementById('activosWrap').contains(e.target)) {
-    activosOpen = false;
-    document.getElementById('activosDropdown').classList.remove('open');
-    document.removeEventListener('click', activosOutside);
-  }
-}
-
-function renderActivosOnMap() {
-  // Clear existing activo markers
-  Object.values(activoMapMarkers).flat().forEach(m => map.removeLayer(m));
-  activoMapMarkers = { ambulancias: [], policias: [], bomberos: [], forestals: [] };
-
-  for (const [type, resources] of Object.entries(RESOURCES)) {
-    const color = RESOURCE_ICONS[type].color;
-    const icon  = RESOURCE_ICONS[type].icon;
-    let count = 0;
-
-    resources.forEach(r => {
-      if (r.status !== 'libre') return; // only libre
-      count++;
-      const borderColor = STATUS_BORDER[r.status] || color;
-      const mIcon = L.divIcon({
-        html: `<div style="
-          width:28px;height:28px;
-          background:white;
-          border:2.5px solid ${borderColor};
-          border-radius:50%;
-          display:flex;align-items:center;justify-content:center;
-          font-size:14px;
-          box-shadow:0 2px 8px rgba(0,0,0,0.18);
-          cursor:pointer;
-        ">${icon}</div>`,
-        iconSize:[28,28], iconAnchor:[14,14], className:''
-      });
-      const marker = L.marker(r.base, {icon: mIcon})
-        .addTo(map)
-        .bindPopup(`
-          <div style="font-family:'Rajdhani',sans-serif;min-width:140px">
-            <div style="font-size:15px;font-weight:700;color:#0e1c30">${icon} ${r.name}</div>
-            <div style="font-size:11px;color:#7a8eaa;font-family:'Share Tech Mono',monospace;margin-top:2px">${r.detail}</div>
-            <div style="margin-top:6px;display:inline-block;font-size:10px;padding:2px 7px;border-radius:3px;
-              background:rgba(24,122,64,0.10);color:#187a40;border:1px solid rgba(24,122,64,0.3);
-              font-family:'Share Tech Mono',monospace;letter-spacing:1px">LIBRE</div>
-          </div>
-        `);
-      if (!activoLayerVisible[type]) {
-        map.removeLayer(marker);
-      }
-      activoMapMarkers[type].push(marker);
-    });
-
-    document.getElementById('count' + type.charAt(0).toUpperCase() + type.slice(1)).textContent = count;
-  }
-}
-
-function toggleActivoLayer(type, visible) {
-  activoLayerVisible[type] = visible;
-  // If turning on and no markers exist yet, render them first
-  if (visible && activoMapMarkers[type].length === 0 && activosOpen) {
-    renderActivosOnMap();
-    return;
-  }
-  activoMapMarkers[type].forEach(m => {
-    try {
-      if (visible) {
-        if (!map.hasLayer(m)) m.addTo(map);
-      } else {
-        if (map.hasLayer(m)) map.removeLayer(m);
-      }
-    } catch(e) {}
-  });
-}
-
-
-// ────────────────────────── PANEL TABS (Trànsit / Meteocat)
-const panelState = { transit: false, meteocat: false };
-const panelMaps  = { transit: null,  meteocat: null  };
-const panelLayers= { transit: [],    meteocat: []    };
-
-function togglePanelTab(name) {
-  // Close all others first
-  Object.keys(panelState).forEach(k => {
-    if (k !== name && panelState[k]) {
-      panelState[k] = false;
-      document.getElementById(k + 'Panel').classList.remove('open');
-      const w = document.getElementById(k + 'Wrapper');
-      if (w) w.querySelector('.panel-tab-trigger').classList.remove('active');
-    }
-  });
-  // Also close TETRA if open
-  if (name !== 'tetra' && tetraOpen) toggleTetra();
-
-  panelState[name] = !panelState[name];
-  const panel = document.getElementById(name + 'Panel');
-  panel.classList.toggle('open', panelState[name]);
-  const wrapper = document.getElementById(name + 'Wrapper');
-  if (wrapper) wrapper.querySelector('.panel-tab-trigger').classList.toggle('active', panelState[name]);
-
-  if (panelState[name]) {
-    if (!panelMaps[name]) initPanelMap(name);
-    else setTimeout(() => panelMaps[name].invalidateSize(), 360);
-    if (name === 'transit') updateTransitTime();
-    if (name === 'meteocat') updateMeteocatTime();
-  }
-}
-
-// ── TRANSIT MAP ─────────────────────────────────────────────────────────────
-const TRANSIT_INCIDENTS = [
-  {lat:41.3879, lng:2.1699, road:'Ronda Litoral B-10', type:'Accident', severity:'err',  desc:'Accident amb 2 vehicles. Carril dret tallat.'},
-  {lat:41.4120, lng:2.1780, road:'Av. Meridiana',      type:'Retenció', severity:'warn', desc:'Cua de 3 km. Velocitat 20 km/h.'},
-  {lat:41.4350, lng:2.1750, road:'C-58 pk 12',         type:'Obres',    severity:'warn', desc:'Obres en calçada. Reducció a 1 carril.'},
-  {lat:41.3800, lng:2.1400, road:'Gran Via B-23',       type:'Accident', severity:'err',  desc:'Bolcament de vehicle. Via tallada.'},
-  {lat:41.4550, lng:2.1600, road:'AP-7 pk 156',        type:'Congestió',severity:'warn', desc:'Trànsit molt dens. Velocitat 40 km/h.'},
-  {lat:41.4000, lng:2.1900, road:'C-31 Besòs',         type:'Fluid',    severity:'ok',   desc:'Circulació normal.'},
-  {lat:41.4200, lng:2.0900, road:'Túnel de Vallvidrera',type:'Fluid',   severity:'ok',   desc:'Sense incidències.'},
-  {lat:41.3650, lng:2.1550, road:'Autovia A-2',        type:'Fluid',    severity:'ok',   desc:'Circulació fluida.'},
-];
-
-const SEV_COLOR  = {ok:'#187a40', warn:'#9a7200', err:'#c0271e'};
-const SEV_LABEL  = {ok:'FLUID',   warn:'DENS/OBRES', err:'RETENCIONS'};
-const SEV_FILL   = {ok:'rgba(24,122,64,0.12)', warn:'rgba(154,114,0,0.12)', err:'rgba(192,39,30,0.12)'};
-const SEV_BORDER = {ok:'rgba(24,122,64,0.3)',  warn:'rgba(154,114,0,0.3)',  err:'rgba(192,39,30,0.3)'};
-
-function initPanelMap(name) {
-  const center = [41.4185, 2.1700];
-  const zoom   = name === 'meteocat' ? 9 : 11;
-
-  panelMaps[name] = L.map(name + 'Map', {
-    center, zoom, zoomControl: true, attributionControl: false
-  });
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(panelMaps[name]);
-
-  if (name === 'transit')  renderTransitLayers();
-  if (name === 'meteocat') renderMeteocatLayers();
-
-  setTimeout(() => panelMaps[name].invalidateSize(), 100);
-  setTimeout(() => panelMaps[name].invalidateSize(), 400);
-}
-
-function renderTransitLayers() {
-  const m = panelMaps.transit;
-  panelLayers.transit.forEach(l => m.removeLayer(l));
-  panelLayers.transit = [];
-  const sidebar = document.getElementById('transitSidebar');
-  let sideHTML = '<div class="fp-sidebar-title">INCIDÈNCIES DE TRÀNSIT</div>';
-
-  TRANSIT_INCIDENTS.forEach(inc => {
-    const color = SEV_COLOR[inc.severity];
-    // Line segment marker
-    const icon = L.divIcon({
-      html: `<div style="width:14px;height:14px;background:${color};border:2px solid white;border-radius:3px;box-shadow:0 2px 6px rgba(0,0,0,0.2)"></div>`,
-      iconSize:[14,14], iconAnchor:[7,7], className:''
-    });
-    const marker = L.marker([inc.lat, inc.lng], {icon})
-      .addTo(m)
-      .bindPopup(`<div style="font-family:'Rajdhani',sans-serif;min-width:160px">
-        <div style="font-size:14px;font-weight:700;color:${color}">${inc.type}</div>
-        <div style="font-size:12px;font-weight:600;color:#0e1c30;margin-top:2px">${inc.road}</div>
-        <div style="font-size:11px;color:#7a8eaa;font-family:'Share Tech Mono',monospace;margin-top:4px">${inc.desc}</div>
-      </div>`);
-
-    // Small circle around incident
-    const circle = L.circle([inc.lat, inc.lng], {
-      radius: 600,
-      color, fillColor: color, fillOpacity: 0.12, weight: 1.5, opacity: 0.7
-    }).addTo(m);
-
-    panelLayers.transit.push(marker, circle);
-
-    sideHTML += `<div class="transit-card" onclick="panelMaps.transit.setView([${inc.lat},${inc.lng}],14)">
-      <div class="transit-card-title">${inc.road}</div>
-      <div class="transit-card-detail">${inc.desc}</div>
-      <div class="transit-card-badge" style="background:${SEV_FILL[inc.severity]};color:${color};border:1px solid ${SEV_BORDER[inc.severity]}">${SEV_LABEL[inc.severity]}</div>
-    </div>`;
-  });
-
-  sidebar.innerHTML = sideHTML;
-  // Update badge
-  const hasCrit = TRANSIT_INCIDENTS.some(i => i.severity === 'err');
-  const hasWarn = TRANSIT_INCIDENTS.some(i => i.severity === 'warn');
-  const badge = document.getElementById('transitBadge');
-  if (hasCrit) { badge.className='panel-tab-badge err'; badge.textContent='RETENCIONS'; }
-  else if (hasWarn) { badge.className='panel-tab-badge warn'; badge.textContent='INCIDENTS'; }
-  else { badge.className='panel-tab-badge ok'; badge.textContent='FLUID'; }
-}
-
-function updateTransitTime() {
-  const now = new Date();
-  document.getElementById('transitTime').textContent =
-    String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
-}
-function refreshTransit() { if(panelMaps.transit) renderTransitLayers(); updateTransitTime(); showToast('🚗 Trànsit actualitzat', false); }
-
-// ── METEOCAT MAP ─────────────────────────────────────────────────────────────
-const METEO_STATIONS = [
-  {lat:41.4219, lng:2.1186, name:'Tibidabo',         temp:18, wind:32, rain:0,   alert:'ok',   alertTxt:'Cap alerta'},
-  {lat:41.4295, lng:2.1488, name:"Vall d'Hebron",    temp:20, wind:18, rain:0,   alert:'ok',   alertTxt:'Cap alerta'},
-  {lat:41.3990, lng:2.1204, name:'Sarrià',            temp:19, wind:22, rain:2,   alert:'warn', alertTxt:'Alerta groga pluja'},
-  {lat:41.4040, lng:2.1570, name:'Gràcia',            temp:21, wind:14, rain:0,   alert:'ok',   alertTxt:'Cap alerta'},
-  {lat:41.4420, lng:2.1730, name:'Nou Barris',        temp:20, wind:28, rain:8,   alert:'warn', alertTxt:'Alerta groga vent'},
-  {lat:41.3850, lng:2.1280, name:'Les Corts',         temp:21, wind:12, rain:0,   alert:'ok',   alertTxt:'Cap alerta'},
-  {lat:41.4000, lng:2.1580, name:'Eixample',          temp:22, wind:10, rain:0,   alert:'ok',   alertTxt:'Cap alerta'},
-  {lat:41.4180, lng:2.0980, name:'Collserola',        temp:16, wind:58, rain:14,  alert:'err',  alertTxt:'Alerta vermella vent'},
-  {lat:41.4380, lng:2.1620, name:'Horta',             temp:20, wind:20, rain:3,   alert:'ok',   alertTxt:'Cap alerta'},
-  {lat:41.4360, lng:2.1960, name:'Sant Andreu',       temp:21, wind:15, rain:0,   alert:'ok',   alertTxt:'Cap alerta'},
-];
-
-const METEO_ICON = { ok:'🟢', warn:'🟡', err:'🔴' };
-
-function renderMeteocatLayers() {
-  const m = panelMaps.meteocat;
-  panelLayers.meteocat.forEach(l => m.removeLayer(l));
-  panelLayers.meteocat = [];
-  const sidebar = document.getElementById('meteocatSidebar');
-  let sideHTML = '<div class="fp-sidebar-title">ESTACIONS METEOROLÒGIQUES</div>';
-
-  METEO_STATIONS.forEach(st => {
-    const color = SEV_COLOR[st.alert];
-    const radius = 8000 + st.wind * 80; // bigger radius = more wind
-
-    const circle = L.circle([st.lat, st.lng], {
-      radius,
-      color, fillColor: color,
-      fillOpacity: st.alert === 'err' ? 0.14 : st.alert === 'warn' ? 0.10 : 0.07,
-      weight: st.alert === 'err' ? 2 : 1.5,
-      dashArray: st.alert === 'ok' ? null : st.alert === 'err' ? '6 4' : null,
-      opacity: 0.75
-    }).addTo(m)
-      .bindPopup(`<div style="font-family:'Rajdhani',sans-serif;min-width:160px">
-        <div style="font-size:14px;font-weight:700;color:${color}">${st.name}</div>
-        <div style="font-size:12px;color:#0e1c30;margin-top:4px">🌡 ${st.temp}°C &nbsp; 💨 ${st.wind} km/h &nbsp; 🌧 ${st.rain} mm</div>
-        <div style="font-size:11px;color:${color};font-family:'Share Tech Mono',monospace;margin-top:4px">${st.alertTxt}</div>
-      </div>`);
-
-    // Station marker
-    const icon = L.divIcon({
-      html: `<div style="width:12px;height:12px;background:${color};border:2px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.2)"></div>`,
-      iconSize:[12,12], iconAnchor:[6,6], className:''
-    });
-    const marker = L.marker([st.lat, st.lng], {icon, zIndexOffset:100}).addTo(m)
-      .bindPopup(`<div style="font-family:'Rajdhani',sans-serif;min-width:160px">
-        <div style="font-size:14px;font-weight:700;color:${color}">${st.name}</div>
-        <div style="font-size:12px;color:#0e1c30;margin-top:4px">🌡 ${st.temp}°C &nbsp; 💨 ${st.wind} km/h &nbsp; 🌧 ${st.rain} mm</div>
-        <div style="font-size:11px;color:${color};font-family:'Share Tech Mono',monospace;margin-top:4px">${st.alertTxt}</div>
-      </div>`);
-
-    panelLayers.meteocat.push(circle, marker);
-
-    sideHTML += `<div class="meteo-card" onclick="panelMaps.meteocat.setView([${st.lat},${st.lng}],13)">
-      <div class="meteo-station">${METEO_ICON[st.alert]} ${st.name}</div>
-      <div class="meteo-vals">
-        <span class="meteo-val">🌡 ${st.temp}°C</span>
-        <span class="meteo-val">💨 ${st.wind} km/h</span>
-        <span class="meteo-val">🌧 ${st.rain} mm</span>
-      </div>
-      <div style="font-size:10px;color:${SEV_COLOR[st.alert]};font-family:'Share Tech Mono',monospace;margin-top:4px;letter-spacing:1px">${st.alertTxt.toUpperCase()}</div>
-    </div>`;
-  });
-
-  sidebar.innerHTML = sideHTML;
-  // Update badge
-  const hasCrit = METEO_STATIONS.some(s => s.alert === 'err');
-  const hasWarn = METEO_STATIONS.some(s => s.alert === 'warn');
-  const badge = document.getElementById('meteocatBadge');
-  if (hasCrit) { badge.className='panel-tab-badge err'; badge.textContent='ALERTA ROJA'; }
-  else if (hasWarn) { badge.className='panel-tab-badge warn'; badge.textContent='ALERTA'; }
-  else { badge.className='panel-tab-badge ok'; badge.textContent='OK'; }
-}
-
-function updateMeteocatTime() {
-  const now = new Date();
-  document.getElementById('meteocatTime').textContent =
-    String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
-}
-function refreshMeteocat() { if(panelMaps.meteocat) renderMeteocatLayers(); updateMeteocatTime(); showToast('🌦 Meteocat actualitzat', false); }
-
 </script>
 </body>
 </html>
