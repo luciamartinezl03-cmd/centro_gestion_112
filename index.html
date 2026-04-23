@@ -40,15 +40,68 @@ function togglePanelTab(name) {
 }
 
 // ── TRANSIT MAP ─────────────────────────────────────────────────────────────
-const TRANSIT_INCIDENTS = [
-  {lat:41.3879, lng:2.1699, road:'Ronda Litoral B-10', type:'Accident', severity:'err',  desc:'Accident amb 2 vehicles. Carril dret tallat.'},
-  {lat:41.4120, lng:2.1780, road:'Av. Meridiana',      type:'Retenció', severity:'warn', desc:'Cua de 3 km. Velocitat 20 km/h.'},
-  {lat:41.4350, lng:2.1750, road:'C-58 pk 12',         type:'Obres',    severity:'warn', desc:'Obres en calçada. Reducció a 1 carril.'},
-  {lat:41.3800, lng:2.1400, road:'Gran Via B-23',       type:'Accident', severity:'err',  desc:'Bolcament de vehicle. Via tallada.'},
-  {lat:41.4550, lng:2.1600, road:'AP-7 pk 156',        type:'Congestió',severity:'warn', desc:'Trànsit molt dens. Velocitat 40 km/h.'},
-  {lat:41.4000, lng:2.1900, road:'C-31 Besòs',         type:'Fluid',    severity:'ok',   desc:'Circulació normal.'},
-  {lat:41.4200, lng:2.0900, road:'Túnel de Vallvidrera',type:'Fluid',   severity:'ok',   desc:'Sense incidències.'},
-  {lat:41.3650, lng:2.1550, road:'Autovia A-2',        type:'Fluid',    severity:'ok',   desc:'Circulació fluida.'},
+// Road segments: each has a polyline path, severity color, name and description
+const TRANSIT_ROADS = [
+  {
+    name: 'Ronda Litoral B-10',
+    type: 'Accident', severity: 'err',
+    desc: 'Accident amb 2 vehicles. Carril dret tallat.',
+    path: [[41.3820,2.1550],[41.3850,2.1620],[41.3879,2.1699],[41.3910,2.1800],[41.3940,2.1900]]
+  },
+  {
+    name: 'Av. Meridiana',
+    type: 'Retenció', severity: 'warn',
+    desc: 'Cua de 3 km. Velocitat 20 km/h.',
+    path: [[41.3980,2.1780],[41.4050,2.1770],[41.4120,2.1780],[41.4200,2.1790]]
+  },
+  {
+    name: 'C-58 Sabadell',
+    type: 'Obres', severity: 'warn',
+    desc: 'Obres en calçada. Reducció a 1 carril.',
+    path: [[41.3900,2.1200],[41.4050,2.1180],[41.4200,2.1160],[41.4350,2.1150]]
+  },
+  {
+    name: 'Gran Via B-23',
+    type: 'Accident', severity: 'err',
+    desc: 'Bolcament de vehicle. Via tallada.',
+    path: [[41.3750,2.1100],[41.3780,2.1250],[41.3800,2.1400],[41.3820,2.1550]]
+  },
+  {
+    name: 'AP-7 Nord',
+    type: 'Congestió', severity: 'warn',
+    desc: 'Trànsit molt dens. Velocitat 40 km/h.',
+    path: [[41.4200,2.1600],[41.4350,2.1650],[41.4550,2.1700],[41.4700,2.1750]]
+  },
+  {
+    name: 'Ronda de Dalt B-20',
+    type: 'Fluid', severity: 'ok',
+    desc: 'Circulació normal.',
+    path: [[41.4000,2.1200],[41.4100,2.1400],[41.4150,2.1600],[41.4100,2.1800],[41.4000,2.1900]]
+  },
+  {
+    name: 'Túnel de Vallvidrera',
+    type: 'Fluid', severity: 'ok',
+    desc: 'Sense incidències.',
+    path: [[41.4180,2.0950],[41.4200,2.1050],[41.4210,2.1150]]
+  },
+  {
+    name: 'Autovia A-2',
+    type: 'Fluid', severity: 'ok',
+    desc: 'Circulació fluida.',
+    path: [[41.3500,2.0800],[41.3600,2.1000],[41.3700,2.1200],[41.3800,2.1400]]
+  },
+  {
+    name: 'C-31 Litoral Sud',
+    type: 'Fluid', severity: 'ok',
+    desc: 'Sense retencions.',
+    path: [[41.3650,2.1700],[41.3580,2.1800],[41.3500,2.1900]]
+  },
+  {
+    name: 'C-17 Granollers',
+    type: 'Fluid', severity: 'ok',
+    desc: 'Circulació normal.',
+    path: [[41.4200,2.1800],[41.4350,2.1850],[41.4500,2.1900],[41.4650,2.1950]]
+  },
 ];
 
 const SEV_COLOR  = {ok:'#187a40', warn:'#9a7200', err:'#c0271e'};
@@ -79,40 +132,57 @@ function renderTransitLayers() {
   const sidebar = document.getElementById('transitSidebar');
   let sideHTML = '<div class="fp-sidebar-title">INCIDÈNCIES DE TRÀNSIT</div>';
 
-  TRANSIT_INCIDENTS.forEach(inc => {
-    const color = SEV_COLOR[inc.severity];
-    // Line segment marker
-    const icon = L.divIcon({
-      html: `<div style="width:14px;height:14px;background:${color};border:2px solid white;border-radius:3px;box-shadow:0 2px 6px rgba(0,0,0,0.2)"></div>`,
-      iconSize:[14,14], iconAnchor:[7,7], className:''
-    });
-    const marker = L.marker([inc.lat, inc.lng], {icon})
-      .addTo(m)
-      .bindPopup(`<div style="font-family:'Rajdhani',sans-serif;min-width:160px">
-        <div style="font-size:14px;font-weight:700;color:${color}">${inc.type}</div>
-        <div style="font-size:12px;font-weight:600;color:#0e1c30;margin-top:2px">${inc.road}</div>
-        <div style="font-size:11px;color:#7a8eaa;font-family:'Share Tech Mono',monospace;margin-top:4px">${inc.desc}</div>
-      </div>`);
+  TRANSIT_ROADS.forEach(road => {
+    const color = SEV_COLOR[road.severity];
+    const weight = road.severity === 'err' ? 7 : road.severity === 'warn' ? 6 : 5;
+    const opacity = road.severity === 'ok' ? 0.65 : 0.85;
 
-    // Small circle around incident
-    const circle = L.circle([inc.lat, inc.lng], {
-      radius: 600,
-      color, fillColor: color, fillOpacity: 0.12, weight: 1.5, opacity: 0.7
-    }).addTo(m);
+    // Draw road as colored polyline
+    const line = L.polyline(road.path, {
+      color,
+      weight,
+      opacity,
+      lineCap: 'round',
+      lineJoin: 'round'
+    }).addTo(m).bindPopup(`
+      <div style="font-family:'Rajdhani',sans-serif;min-width:170px">
+        <div style="font-size:14px;font-weight:700;color:${color}">${road.type}</div>
+        <div style="font-size:13px;font-weight:600;color:#0e1c30;margin-top:2px">${road.name}</div>
+        <div style="font-size:11px;color:#7a8eaa;font-family:'Share Tech Mono',monospace;margin-top:4px">${road.desc}</div>
+      </div>
+    `);
 
-    panelLayers.transit.push(marker, circle);
+    // For incidents (err/warn), add a pulsing dot at midpoint
+    if (road.severity !== 'ok') {
+      const mid = road.path[Math.floor(road.path.length / 2)];
+      const dotIcon = L.divIcon({
+        html: `<div style="width:16px;height:16px;background:${color};border:2.5px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.25)"></div>`,
+        iconSize:[16,16], iconAnchor:[8,8], className:''
+      });
+      const dot = L.marker(mid, {icon: dotIcon, zIndexOffset: 100}).addTo(m)
+        .bindPopup(`
+          <div style="font-family:'Rajdhani',sans-serif;min-width:170px">
+            <div style="font-size:14px;font-weight:700;color:${color}">${road.type}</div>
+            <div style="font-size:13px;font-weight:600;color:#0e1c30;margin-top:2px">${road.name}</div>
+            <div style="font-size:11px;color:#7a8eaa;font-family:'Share Tech Mono',monospace;margin-top:4px">${road.desc}</div>
+          </div>
+        `);
+      panelLayers.transit.push(dot);
+    }
 
-    sideHTML += `<div class="transit-card" onclick="panelMaps.transit.setView([${inc.lat},${inc.lng}],14)">
-      <div class="transit-card-title">${inc.road}</div>
-      <div class="transit-card-detail">${inc.desc}</div>
-      <div class="transit-card-badge" style="background:${SEV_FILL[inc.severity]};color:${color};border:1px solid ${SEV_BORDER[inc.severity]}">${SEV_LABEL[inc.severity]}</div>
+    panelLayers.transit.push(line);
+
+    const midPt = road.path[Math.floor(road.path.length / 2)];
+    sideHTML += `<div class="transit-card" onclick="panelMaps.transit.setView([${midPt[0]},${midPt[1]}],13)">
+      <div class="transit-card-title">${road.name}</div>
+      <div class="transit-card-detail">${road.desc}</div>
+      <div class="transit-card-badge" style="background:${SEV_FILL[road.severity]};color:${color};border:1px solid ${SEV_BORDER[road.severity]}">${SEV_LABEL[road.severity]}</div>
     </div>`;
   });
 
   sidebar.innerHTML = sideHTML;
-  // Update badge
-  const hasCrit = TRANSIT_INCIDENTS.some(i => i.severity === 'err');
-  const hasWarn = TRANSIT_INCIDENTS.some(i => i.severity === 'warn');
+  const hasCrit = TRANSIT_ROADS.some(r => r.severity === 'err');
+  const hasWarn = TRANSIT_ROADS.some(r => r.severity === 'warn');
   const badge = document.getElementById('transitBadge');
   if (hasCrit) { badge.className='panel-tab-badge err'; badge.textContent='RETENCIONS'; }
   else if (hasWarn) { badge.className='panel-tab-badge warn'; badge.textContent='INCIDENTS'; }
@@ -128,19 +198,73 @@ function refreshTransit() { if(panelMaps.transit) renderTransitLayers(); updateT
 
 // ── METEOCAT MAP ─────────────────────────────────────────────────────────────
 const METEO_STATIONS = [
-  {lat:41.4219, lng:2.1186, name:'Tibidabo',         temp:18, wind:32, rain:0,   alert:'ok',   alertTxt:'Cap alerta'},
-  {lat:41.4295, lng:2.1488, name:"Vall d'Hebron",    temp:20, wind:18, rain:0,   alert:'ok',   alertTxt:'Cap alerta'},
-  {lat:41.3990, lng:2.1204, name:'Sarrià',            temp:19, wind:22, rain:2,   alert:'warn', alertTxt:'Alerta groga pluja'},
-  {lat:41.4040, lng:2.1570, name:'Gràcia',            temp:21, wind:14, rain:0,   alert:'ok',   alertTxt:'Cap alerta'},
-  {lat:41.4420, lng:2.1730, name:'Nou Barris',        temp:20, wind:28, rain:8,   alert:'warn', alertTxt:'Alerta groga vent'},
-  {lat:41.3850, lng:2.1280, name:'Les Corts',         temp:21, wind:12, rain:0,   alert:'ok',   alertTxt:'Cap alerta'},
-  {lat:41.4000, lng:2.1580, name:'Eixample',          temp:22, wind:10, rain:0,   alert:'ok',   alertTxt:'Cap alerta'},
-  {lat:41.4180, lng:2.0980, name:'Collserola',        temp:16, wind:58, rain:14,  alert:'err',  alertTxt:'Alerta vermella vent'},
-  {lat:41.4380, lng:2.1620, name:'Horta',             temp:20, wind:20, rain:3,   alert:'ok',   alertTxt:'Cap alerta'},
-  {lat:41.4360, lng:2.1960, name:'Sant Andreu',       temp:21, wind:15, rain:0,   alert:'ok',   alertTxt:'Cap alerta'},
+  {lat:41.4219, lng:2.1186, name:'Tibidabo',       tmax:18, tmin:9,  wind:32, rain:0,  sky:'partly',  alert:'ok',   alertTxt:'Cap alerta'},
+  {lat:41.4295, lng:2.1488, name:"Vall d'Hebron",  tmax:20, tmin:11, wind:18, rain:0,  sky:'sunny',   alert:'ok',   alertTxt:'Cap alerta'},
+  {lat:41.3990, lng:2.1204, name:'Sarrià',          tmax:19, tmin:10, wind:22, rain:4,  sky:'cloudy',  alert:'warn', alertTxt:'Alerta groga pluja'},
+  {lat:41.4040, lng:2.1570, name:'Gràcia',          tmax:21, tmin:12, wind:14, rain:0,  sky:'sunny',   alert:'ok',   alertTxt:'Cap alerta'},
+  {lat:41.4420, lng:2.1730, name:'Nou Barris',      tmax:20, tmin:11, wind:28, rain:8,  sky:'rainy',   alert:'warn', alertTxt:'Alerta groga vent'},
+  {lat:41.3850, lng:2.1280, name:'Les Corts',       tmax:21, tmin:11, wind:12, rain:0,  sky:'sunny',   alert:'ok',   alertTxt:'Cap alerta'},
+  {lat:41.4000, lng:2.1580, name:'Eixample',        tmax:22, tmin:13, wind:10, rain:0,  sky:'sunny',   alert:'ok',   alertTxt:'Cap alerta'},
+  {lat:41.4180, lng:2.0980, name:'Collserola',      tmax:16, tmin:8,  wind:58, rain:14, sky:'stormy',  alert:'err',  alertTxt:'Alerta vermella vent'},
+  {lat:41.4380, lng:2.1620, name:'Horta',           tmax:20, tmin:11, wind:20, rain:3,  sky:'partly',  alert:'ok',   alertTxt:'Cap alerta'},
+  {lat:41.4360, lng:2.1960, name:'Sant Andreu',     tmax:21, tmin:12, wind:15, rain:0,  sky:'sunny',   alert:'ok',   alertTxt:'Cap alerta'},
+  {lat:41.3700, lng:2.1300, name:'Hospitalet',      tmax:22, tmin:13, wind:11, rain:0,  sky:'sunny',   alert:'ok',   alertTxt:'Cap alerta'},
+  {lat:41.3800, lng:2.1700, name:'Barcelona Port',  tmax:21, tmin:14, wind:24, rain:0,  sky:'partly',  alert:'ok',   alertTxt:'Cap alerta'},
 ];
 
-const METEO_ICON = { ok:'🟢', warn:'🟡', err:'🔴' };
+// Sky condition SVG icons (Meteocat style)
+function getSkyIcon(sky, alertColor) {
+  const sun = `<circle cx="20" cy="20" r="9" fill="#f5a623" stroke="#e8920f" stroke-width="1.5"/>
+    <g stroke="#f5a623" stroke-width="2" stroke-linecap="round">
+      <line x1="20" y1="4" x2="20" y2="8"/><line x1="20" y1="32" x2="20" y2="36"/>
+      <line x1="4" y1="20" x2="8" y2="20"/><line x1="32" y1="20" x2="36" y2="20"/>
+      <line x1="8.7" y1="8.7" x2="11.5" y2="11.5"/><line x1="28.5" y1="28.5" x2="31.3" y2="31.3"/>
+      <line x1="31.3" y1="8.7" x2="28.5" y2="11.5"/><line x1="11.5" y1="28.5" x2="8.7" y2="31.3"/>
+    </g>`;
+  const cloud = `<ellipse cx="24" cy="26" rx="12" ry="7" fill="white" stroke="#bbb" stroke-width="1.2"/>
+    <ellipse cx="20" cy="24" rx="8" ry="6" fill="white" stroke="#bbb" stroke-width="1.2"/>
+    <ellipse cx="28" cy="23" rx="7" ry="6" fill="white" stroke="#bbb" stroke-width="1.2"/>`;
+  const rain = `<line x1="18" y1="33" x2="16" y2="39" stroke="#4a90d9" stroke-width="1.8" stroke-linecap="round"/>
+    <line x1="23" y1="33" x2="21" y2="39" stroke="#4a90d9" stroke-width="1.8" stroke-linecap="round"/>
+    <line x1="28" y1="33" x2="26" y2="39" stroke="#4a90d9" stroke-width="1.8" stroke-linecap="round"/>`;
+  const wind = `<path d="M6 22 Q14 18 22 22 Q30 26 38 22" stroke="#7a8eaa" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M6 27 Q12 23 20 27 Q28 31 36 27" stroke="#7a8eaa" stroke-width="1.5" fill="none" stroke-linecap="round"/>`;
+
+  const icons = {
+    sunny:   `<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">${sun}</svg>`,
+    partly:  `<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+      <g transform="translate(-4,-4) scale(0.8)">${sun}</g>${cloud}</svg>`,
+    cloudy:  `<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="22" cy="22" rx="14" ry="9" fill="#dde" stroke="#bbb" stroke-width="1.2"/>
+      <ellipse cx="17" cy="20" rx="10" ry="8" fill="#dde" stroke="#bbb" stroke-width="1.2"/>
+      <ellipse cx="28" cy="19" rx="9" ry="8" fill="#dde" stroke="#bbb" stroke-width="1.2"/></svg>`,
+    rainy:   `<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">${cloud}${rain}</svg>`,
+    stormy:  `<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="22" cy="18" rx="14" ry="9" fill="#aab" stroke="#888" stroke-width="1.2"/>
+      <ellipse cx="17" cy="16" rx="10" ry="8" fill="#aab" stroke="#888" stroke-width="1.2"/>
+      <ellipse cx="28" cy="15" rx="9" ry="8" fill="#aab" stroke="#888" stroke-width="1.2"/>
+      ${rain}
+      <polyline points="22,32 19,37 23,37 20,43" stroke="#f5c400" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  };
+  return icons[sky] || icons.sunny;
+}
+
+// Meteocat-style marker: red box tmax / blue box tmin + sky icon
+function makeMeteoMarker(st) {
+  const alertBorder = st.alert === 'err' ? '2px solid #c0271e' : st.alert === 'warn' ? '2px solid #9a7200' : '1px solid #d2daea';
+  const windLine = st.wind > 30
+    ? `<div style="font-size:9px;color:#4a6080;font-family:'Share Tech Mono',monospace;margin-top:2px">💨 ${st.wind} km/h</div>`
+    : '';
+  return `
+    <div style="display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.18))">
+      <div style="display:flex;gap:2px;margin-bottom:2px">
+        <div style="background:#c0271e;color:white;font-family:'Share Tech Mono',monospace;font-size:12px;font-weight:700;padding:2px 5px;border-radius:3px;line-height:1.3">${st.tmax}</div>
+        <div style="background:#1460c8;color:white;font-family:'Share Tech Mono',monospace;font-size:12px;font-weight:700;padding:2px 5px;border-radius:3px;line-height:1.3">${st.tmin}</div>
+      </div>
+      ${getSkyIcon(st.sky)}
+      ${windLine}
+    </div>`;
+}
 
 function renderMeteocatLayers() {
   const m = panelMaps.meteocat;
@@ -151,49 +275,67 @@ function renderMeteocatLayers() {
 
   METEO_STATIONS.forEach(st => {
     const color = SEV_COLOR[st.alert];
-    const radius = 8000 + st.wind * 80; // bigger radius = more wind
 
-    const circle = L.circle([st.lat, st.lng], {
-      radius,
-      color, fillColor: color,
-      fillOpacity: st.alert === 'err' ? 0.14 : st.alert === 'warn' ? 0.10 : 0.07,
-      weight: st.alert === 'err' ? 2 : 1.5,
-      dashArray: st.alert === 'ok' ? null : st.alert === 'err' ? '6 4' : null,
-      opacity: 0.75
-    }).addTo(m)
-      .bindPopup(`<div style="font-family:'Rajdhani',sans-serif;min-width:160px">
-        <div style="font-size:14px;font-weight:700;color:${color}">${st.name}</div>
-        <div style="font-size:12px;color:#0e1c30;margin-top:4px">🌡 ${st.temp}°C &nbsp; 💨 ${st.wind} km/h &nbsp; 🌧 ${st.rain} mm</div>
-        <div style="font-size:11px;color:${color};font-family:'Share Tech Mono',monospace;margin-top:4px">${st.alertTxt}</div>
-      </div>`);
+    // Alert circle only for warn/err stations
+    if (st.alert !== 'ok') {
+      const circle = L.circle([st.lat, st.lng], {
+        radius: 5000,
+        color, fillColor: color,
+        fillOpacity: st.alert === 'err' ? 0.10 : 0.07,
+        weight: st.alert === 'err' ? 2 : 1.5,
+        dashArray: st.alert === 'err' ? '6 4' : '4 3',
+        opacity: 0.8
+      }).addTo(m).bindPopup(`
+        <div style="font-family:'Rajdhani',sans-serif;min-width:160px">
+          <div style="font-size:14px;font-weight:700;color:${color}">${st.alertTxt}</div>
+          <div style="font-size:12px;color:#0e1c30;margin-top:4px">${st.name}</div>
+          <div style="font-size:11px;color:#7a8eaa;font-family:'Share Tech Mono',monospace;margin-top:2px">💨 ${st.wind} km/h · 🌧 ${st.rain} mm</div>
+        </div>`);
+      panelLayers.meteocat.push(circle);
+    }
 
-    // Station marker
-    const icon = L.divIcon({
-      html: `<div style="width:12px;height:12px;background:${color};border:2px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.2)"></div>`,
-      iconSize:[12,12], iconAnchor:[6,6], className:''
+    // Meteocat-style marker: temp boxes + sky icon
+    const iconHtml = makeMeteoMarker(st);
+    const iconW = 80, iconH = st.wind > 30 ? 72 : 60;
+    const meteoIcon = L.divIcon({
+      html: iconHtml,
+      iconSize: [iconW, iconH],
+      iconAnchor: [iconW/2, iconH/2],
+      className: ''
     });
-    const marker = L.marker([st.lat, st.lng], {icon, zIndexOffset:100}).addTo(m)
-      .bindPopup(`<div style="font-family:'Rajdhani',sans-serif;min-width:160px">
-        <div style="font-size:14px;font-weight:700;color:${color}">${st.name}</div>
-        <div style="font-size:12px;color:#0e1c30;margin-top:4px">🌡 ${st.temp}°C &nbsp; 💨 ${st.wind} km/h &nbsp; 🌧 ${st.rain} mm</div>
-        <div style="font-size:11px;color:${color};font-family:'Share Tech Mono',monospace;margin-top:4px">${st.alertTxt}</div>
-      </div>`);
 
-    panelLayers.meteocat.push(circle, marker);
+    const marker = L.marker([st.lat, st.lng], {icon: meteoIcon, zIndexOffset: 100})
+      .addTo(m)
+      .bindPopup(`
+        <div style="font-family:'Rajdhani',sans-serif;min-width:170px">
+          <div style="font-size:15px;font-weight:700;color:#0e1c30">${st.name}</div>
+          <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+            <span style="background:#c0271e;color:white;padding:2px 7px;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:13px">${st.tmax}°</span>
+            <span style="background:#1460c8;color:white;padding:2px 7px;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:13px">${st.tmin}°</span>
+          </div>
+          <div style="font-size:12px;color:#2c3a52;margin-top:6px">💨 ${st.wind} km/h &nbsp; 🌧 ${st.rain} mm</div>
+          <div style="font-size:11px;color:${color};font-family:'Share Tech Mono',monospace;margin-top:4px;letter-spacing:1px">${st.alertTxt.toUpperCase()}</div>
+        </div>`);
 
+    panelLayers.meteocat.push(marker);
+
+    const skySym = {sunny:'☀️', partly:'⛅', cloudy:'☁️', rainy:'🌧', stormy:'⛈'}[st.sky] || '☀️';
     sideHTML += `<div class="meteo-card" onclick="panelMaps.meteocat.setView([${st.lat},${st.lng}],13)">
-      <div class="meteo-station">${METEO_ICON[st.alert]} ${st.name}</div>
-      <div class="meteo-vals">
-        <span class="meteo-val">🌡 ${st.temp}°C</span>
-        <span class="meteo-val">💨 ${st.wind} km/h</span>
-        <span class="meteo-val">🌧 ${st.rain} mm</span>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div class="meteo-station">${st.name}</div>
+        <span style="font-size:18px">${skySym}</span>
       </div>
-      <div style="font-size:10px;color:${SEV_COLOR[st.alert]};font-family:'Share Tech Mono',monospace;margin-top:4px;letter-spacing:1px">${st.alertTxt.toUpperCase()}</div>
+      <div class="meteo-vals">
+        <span class="meteo-val" style="color:#c0271e;font-weight:700">▲${st.tmax}°</span>
+        <span class="meteo-val" style="color:#1460c8;font-weight:700">▼${st.tmin}°</span>
+        <span class="meteo-val">💨${st.wind}km/h</span>
+        <span class="meteo-val">🌧${st.rain}mm</span>
+      </div>
+      <div style="font-size:10px;color:${color};font-family:'Share Tech Mono',monospace;margin-top:4px;letter-spacing:1px">${st.alertTxt.toUpperCase()}</div>
     </div>`;
   });
 
   sidebar.innerHTML = sideHTML;
-  // Update badge
   const hasCrit = METEO_STATIONS.some(s => s.alert === 'err');
   const hasWarn = METEO_STATIONS.some(s => s.alert === 'warn');
   const badge = document.getElementById('meteocatBadge');
