@@ -6,7 +6,51 @@
 <title>Centro de Gestión 112</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+function activateTomTom() {
+  var key = document.getElementById('tomtomKeyInput').value.trim();
+  if (!key) { showToast('⚠️ Introdueix una API key de TomTom', true); return; }
+
+  // Inject key into drawTransit
+  var m = tabMaps.transit;
+  if (!m) { showToast('⚠️ Obre el panel de Trànsit primer', true); return; }
+
+  // Remove old layers
+  tabLayers.transit.forEach(function(l){m.removeLayer(l);}); tabLayers.transit=[];
+  if(m._tomtomFlow){m.removeLayer(m._tomtomFlow); m._tomtomFlow=null;}
+  if(m._tomtomInc){m.removeLayer(m._tomtomInc); m._tomtomInc=null;}
+
+  // Add real traffic layers
+  m._tomtomFlow = L.tileLayer(
+    'https://api.tomtom.com/traffic/map/4/tile/flow/relative0/{z}/{x}/{y}.png?key='+key+'&tileSize=256',
+    {opacity:0.8, maxZoom:19, attribution:'© TomTom'}
+  ).addTo(m);
+
+  m._tomtomInc = L.tileLayer(
+    'https://api.tomtom.com/traffic/map/4/tile/incidents/s3/{z}/{x}/{y}.png?key='+key+'&tileSize=256',
+    {opacity:0.9, maxZoom:19}
+  ).addTo(m);
+
+  document.getElementById('transitSidebar').innerHTML =
+    '<div style="font-size:8px;letter-spacing:2px;font-family:Share Tech Mono,monospace;color:var(--text-dim);margin-bottom:8px">TRÀNSIT EN TEMPS REAL</div>'
+    +'<div style="background:rgba(24,122,64,.08);border:1px solid rgba(24,122,64,.3);border-radius:4px;padding:10px;font-size:11px;color:var(--green);font-family:Share Tech Mono,monospace;margin-bottom:10px">✓ TOMTOM CONNECTAT<br><span style="color:var(--text-dim);font-size:9px">Dades en temps real actives</span></div>'
+    +'<div style="font-size:11px;color:var(--text-dim);font-family:Share Tech Mono,monospace;line-height:1.8">'
+    +'<b style="color:#187a40">■</b> Fluid<br>'
+    +'<b style="color:#c8930a">■</b> Dens / Lent<br>'
+    +'<b style="color:#c0271e">■</b> Retencions<br>'
+    +'<b style="color:#888">■</b> Dades no disponibles'
+    +'</div>'
+    +'<div style="margin-top:12px;font-size:9px;color:var(--text-dim);font-family:Share Tech Mono,monospace;border-top:1px solid var(--border);padding-top:8px">'
+    +'Les icones sobre el mapa indiquen accidents, obres i talls de carretera en temps real.'
+    +'</div>';
+
+  document.getElementById('transitBadge').textContent='EN VIVO';
+  document.getElementById('transitBadge').className='htab-badge b-ok';
+  showToast('✅ TomTom Traffic activat!');
+  m.setView([41.55, 2.00], 10);
+}
+
+</script>
 <style>
 :root{
   --bg:#edf1f7;--panel:#fff;--panel2:#f4f6fb;--border:#d2daea;
@@ -261,8 +305,12 @@ input[type=range]:focus{box-shadow:none;}
     <div id="transitMap" class="fsp-map"></div>
     <div id="transitSidebar" class="fsp-sb"></div>
   </div>
-  <div class="fsp-ftr">
+  <div class="fsp-ftr" style="flex-wrap:wrap;gap:6px;">
     <span>Font: Servei Català de Trànsit · <span id="transitTime">—</span></span>
+    <div style="display:flex;align-items:center;gap:6px;flex:1;justify-content:center;">
+      <input type="text" id="tomtomKeyInput" placeholder="Pega aquí tu API key de TomTom..." style="font-family:Share Tech Mono,monospace;font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:3px;background:var(--panel2);color:var(--text-bright);width:280px;height:24px;">
+      <button onclick="activateTomTom()" style="background:var(--blue);color:white;border:none;padding:3px 10px;border-radius:3px;cursor:pointer;font-family:Share Tech Mono,monospace;font-size:10px;height:24px;">ACTIVAR</button>
+    </div>
     <span class="fsp-ref" onclick="refreshTransit()">↺ ACTUALITZAR</span>
   </div>
 </div>
@@ -748,8 +796,8 @@ function toggleTab(name){
 function updateTabTime(name){var n=new Date();document.getElementById(name+'Time').textContent=pad(n.getHours())+':'+pad(n.getMinutes())+':'+pad(n.getSeconds());}
 
 function initTabMap(name){
-  var center=name==='meteocat'?[41.7,1.5]:[41.65,1.8];
-  tabMaps[name]=L.map(name+'Map',{center:center,zoom:8,zoomControl:true,attributionControl:false});
+  var center=name==='meteocat'?[41.7,1.5]:[41.55,2.00];
+  tabMaps[name]=L.map(name+'Map',{center:center,zoom:name==='transit'?10:8,zoomControl:true,attributionControl:false});
   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(tabMaps[name]);
   tabMaps[name].invalidateSize();
   if(name==='transit')drawTransit();
@@ -759,88 +807,154 @@ function initTabMap(name){
 
 // TRÀNSIT
 var ROADS=[
-  // AP-7 Nord BCN -> Girona (seguint la costa i autopista real)
+  // AP-7 Nord: BCN -> Granollers -> Girona (autopista real)
   {name:'AP-7 Nord (Girona)',sev:'ok',desc:'Circulació fluida.',path:[
-    [41.420,2.218],[41.461,2.267],[41.516,2.324],[41.545,2.370],[41.587,2.416],
-    [41.624,2.442],[41.662,2.470],[41.704,2.511],[41.752,2.560],[41.800,2.618],
-    [41.858,2.669],[41.912,2.706],[41.970,2.760],[41.980,2.820]
+    [41.412,2.196],[41.428,2.210],[41.450,2.228],[41.475,2.245],
+    [41.500,2.262],[41.524,2.284],[41.548,2.302],[41.572,2.318],
+    [41.600,2.336],[41.628,2.358],[41.658,2.382],[41.690,2.412],
+    [41.720,2.442],[41.752,2.476],[41.780,2.510],[41.810,2.548],
+    [41.845,2.590],[41.870,2.630],[41.900,2.668],[41.935,2.706],
+    [41.965,2.738],[41.985,2.765]
   ]},
-  // AP-7 Sud BCN -> Tarragona (autopista real)
+  // AP-7 Sud: BCN -> Tarragona (traçat autopista real)
   {name:'AP-7 Sud (Tarragona)',sev:'warn',desc:'Trànsit dens. Obres pk 78.',path:[
-    [41.365,2.095],[41.341,2.060],[41.310,2.024],[41.280,1.990],
-    [41.230,1.915],[41.180,1.840],[41.140,1.765],[41.100,1.680],
-    [41.060,1.600],[41.018,1.520],[40.970,1.440],[40.920,1.370]
+    [41.412,2.196],[41.395,2.178],[41.375,2.152],[41.352,2.118],
+    [41.328,2.082],[41.302,2.044],[41.275,2.005],[41.248,1.965],
+    [41.220,1.925],[41.192,1.882],[41.162,1.838],[41.132,1.792],
+    [41.100,1.745],[41.068,1.698],[41.040,1.650],[41.010,1.598],
+    [40.982,1.548],[40.955,1.498]
   ]},
-  // AP-2 BCN -> Lleida (per Martorell i Igualada)
+  // AP-2: BCN -> Martorell -> Igualada -> Lleida
   {name:'AP-2 (Lleida-BCN)',sev:'ok',desc:'Sense incidències.',path:[
-    [41.365,2.095],[41.380,2.020],[41.398,1.960],[41.420,1.890],
-    [41.455,1.810],[41.495,1.720],[41.530,1.650],[41.562,1.570],
-    [41.595,1.490],[41.618,1.380],[41.625,1.260],[41.625,1.120],[41.622,0.990],[41.620,0.820],[41.615,0.630]
+    [41.412,2.196],[41.398,2.165],[41.388,2.130],[41.382,2.095],
+    [41.375,2.060],[41.368,2.020],[41.368,1.978],[41.372,1.935],
+    [41.378,1.892],[41.388,1.848],[41.400,1.802],[41.415,1.758],
+    [41.432,1.712],[41.452,1.668],[41.475,1.622],[41.502,1.578],
+    [41.530,1.535],[41.558,1.492],[41.585,1.448],[41.608,1.402],
+    [41.622,1.355],[41.626,1.302],[41.622,1.248],[41.616,1.195],
+    [41.612,1.142],[41.615,1.088],[41.618,1.030],[41.620,0.968],[41.618,0.625]
   ]},
-  // B-23 Gran Via (sortida BCN cap a Molins de Rei, traçat real)
+  // B-23 / C-58 sortida Barcelona cap a Molins/Martorell
   {name:'Gran Via B-23',sev:'err',desc:'Accident km 12. Carril tallat.',path:[
-    [41.376,2.128],[41.372,2.108],[41.370,2.090],[41.367,2.068],[41.365,2.048],[41.363,2.018],[41.362,1.990]
+    [41.383,2.128],[41.380,2.112],[41.377,2.096],[41.374,2.078],
+    [41.371,2.058],[41.368,2.038],[41.366,2.018],[41.364,1.998],
+    [41.364,1.978],[41.366,1.958]
   ]},
-  // B-10 Ronda Litoral (seguint el port i costa)
+  // B-10 Ronda Litoral Barcelona
   {name:'Ronda Litoral B-10',sev:'err',desc:'Retencions per accident.',path:[
-    [41.420,2.218],[41.413,2.210],[41.404,2.198],[41.395,2.186],
-    [41.386,2.175],[41.378,2.162],[41.374,2.150],[41.370,2.140]
+    [41.432,2.228],[41.425,2.218],[41.418,2.208],[41.412,2.196],
+    [41.405,2.184],[41.398,2.172],[41.392,2.162],[41.386,2.150],
+    [41.380,2.140],[41.375,2.130],[41.370,2.120]
   ]},
-  // B-20 Ronda de Dalt (arc interior de Barcelona)
+  // B-20 Ronda de Dalt Barcelona
   {name:'Ronda de Dalt B-20',sev:'warn',desc:'Congestió habitual.',path:[
-    [41.420,2.218],[41.428,2.204],[41.435,2.190],[41.441,2.173],
-    [41.446,2.155],[41.448,2.136],[41.446,2.115],[41.443,2.098]
+    [41.432,2.228],[41.438,2.215],[41.442,2.200],[41.445,2.185],
+    [41.446,2.168],[41.445,2.150],[41.442,2.134],[41.438,2.118],
+    [41.432,2.102],[41.425,2.088],[41.416,2.076],[41.406,2.066],
+    [41.395,2.058],[41.383,2.052]
   ]},
-  // C-58 BCN -> Sabadell (Meridiana Nord / Vallès)
-  {name:'C-58 (Sabadell)',sev:'ok',desc:'Fluid.',path:[
-    [41.428,2.170],[41.444,2.162],[41.462,2.150],[41.480,2.138],
-    [41.500,2.127],[41.520,2.116],[41.540,2.108],[41.558,2.102],[41.575,2.093]
+  // C-58: BCN -> Cerdanyola -> Sabadell -> Terrassa
+  {name:'C-58 (Sabadell-Terrassa)',sev:'ok',desc:'Fluid.',path:[
+    [41.428,2.170],[41.438,2.162],[41.448,2.155],[41.460,2.148],
+    [41.472,2.140],[41.486,2.132],[41.500,2.124],[41.515,2.116],
+    [41.530,2.108],[41.545,2.100],[41.560,2.092],[41.572,2.082],
+    [41.582,2.068]
   ]},
-  // C-17 BCN -> Granollers -> Vic
+  // C-17: BCN -> Granollers -> Vic
   {name:'C-17 (Vic)',sev:'ok',desc:'Sense retencions.',path:[
-    [41.420,2.218],[41.438,2.225],[41.460,2.229],[41.487,2.234],
-    [41.512,2.240],[41.545,2.248],[41.580,2.258],[41.612,2.265],
-    [41.648,2.272],[41.690,2.281],[41.730,2.285],[41.770,2.290],
-    [41.815,2.298],[41.860,2.310],[41.908,2.248]
+    [41.428,2.170],[41.440,2.178],[41.455,2.188],[41.472,2.198],
+    [41.490,2.208],[41.510,2.218],[41.530,2.228],[41.552,2.238],
+    [41.575,2.248],[41.600,2.258],[41.625,2.268],[41.652,2.278],
+    [41.680,2.286],[41.710,2.292],[41.742,2.296],[41.775,2.298],
+    [41.808,2.295],[41.838,2.288],[41.868,2.272],[41.898,2.248],[41.920,2.222]
   ]},
-  // C-31 / N-II Costa (BCN -> Mataró -> Girona per la costa)
+  // N-II / C-31 Costa: BCN -> Mataró
   {name:'N-II Costa (Mataró)',sev:'warn',desc:'Trànsit dens a Mataró.',path:[
-    [41.420,2.218],[41.438,2.248],[41.460,2.272],[41.482,2.295],
-    [41.506,2.318],[41.528,2.338],[41.545,2.360],[41.562,2.385],
-    [41.580,2.408],[41.600,2.430],[41.625,2.450],[41.660,2.475]
+    [41.432,2.228],[41.448,2.250],[41.465,2.272],[41.482,2.294],
+    [41.498,2.315],[41.514,2.335],[41.530,2.354],[41.546,2.372],
+    [41.560,2.390],[41.572,2.408],[41.584,2.428],[41.596,2.448],
+    [41.610,2.468],[41.625,2.488],[41.642,2.508]
   ]},
-  // C-32 Litoral Sud (BCN -> Sitges -> Tarragona per la costa)
+  // C-32 Litoral: BCN -> Sitges -> Vilanova
   {name:'C-32 Litoral (Sitges)',sev:'ok',desc:'Sense incidències.',path:[
-    [41.365,2.095],[41.340,2.068],[41.316,2.036],[41.292,1.998],
-    [41.262,1.954],[41.238,1.918],[41.212,1.884],[41.188,1.844],[41.160,1.800]
+    [41.370,2.120],[41.358,2.108],[41.345,2.092],[41.330,2.072],
+    [41.315,2.052],[41.300,2.030],[41.282,2.005],[41.262,1.978],
+    [41.242,1.950],[41.220,1.920],[41.198,1.890],[41.175,1.858],
+    [41.152,1.825],[41.130,1.790],[41.108,1.754]
   ]},
-  // C-25 Eix Transversal (Vic -> Manresa -> Lleida)
+  // C-25 Eix Transversal: Vic -> Manresa -> Cervera -> Lleida
   {name:'C-25 Eix Transversal',sev:'ok',desc:'Circulació normal.',path:[
-    [41.908,2.248],[41.890,2.200],[41.870,2.140],[41.845,2.078],
-    [41.818,2.010],[41.790,1.942],[41.760,1.870],[41.732,1.800],
-    [41.700,1.738],[41.672,1.670],[41.645,1.600],[41.618,1.540],
-    [41.600,1.462],[41.582,1.380],[41.570,1.305]
+    [41.920,2.222],[41.902,2.182],[41.882,2.138],[41.860,2.092],
+    [41.838,2.048],[41.815,2.002],[41.792,1.958],[41.768,1.912],
+    [41.742,1.868],[41.715,1.822],[41.688,1.778],[41.660,1.732],
+    [41.632,1.688],[41.605,1.645],[41.578,1.602],[41.552,1.560],
+    [41.528,1.518],[41.505,1.478],[41.482,1.438],[41.462,1.398],
+    [41.445,1.358],[41.432,1.318],[41.422,1.278],[41.415,1.238],
+    [41.412,1.198],[41.412,1.158],[41.415,1.118],[41.420,1.078]
   ]},
-  // A-2 / N-II interior (BCN -> Terrassa -> Manresa)
-  {name:'A-2 Interior (Manresa)',sev:'ok',desc:'Circulació normal.',path:[
-    [41.443,2.098],[41.452,2.078],[41.468,2.058],[41.492,2.030],
-    [41.515,2.012],[41.540,1.988],[41.562,1.960],[41.588,1.930],[41.612,1.900],[41.635,1.865],[41.650,1.840]
-  ]},
-  // Meridiana / C-17 sortida Nord (BCN centre -> nord)
+  // Meridiana / C-17 inici (eix nord BCN)
   {name:'Av. Meridiana',sev:'warn',desc:'Cua de 2 km hora punta.',path:[
-    [41.395,2.180],[41.403,2.183],[41.412,2.188],[41.420,2.193],
-    [41.428,2.198],[41.436,2.204],[41.444,2.210]
+    [41.395,2.180],[41.400,2.182],[41.405,2.184],[41.410,2.186],
+    [41.415,2.188],[41.420,2.190],[41.425,2.192],[41.430,2.196],
+    [41.435,2.200],[41.440,2.204]
   ]},
-  // N-340 / AP-7 Tarragona -> Tortosa
-  {name:'N-340 (Tortosa)',sev:'ok',desc:'Sense retencions.',path:[
-    [40.920,1.370],[40.882,1.308],[40.845,1.255],[40.820,1.200],
-    [40.808,1.152],[40.812,1.098],[40.818,1.045],[40.813,0.990]
+  // N-340: Tarragona -> Tortosa -> Amposta
+  {name:'N-340 (Tortosa-Amposta)',sev:'ok',desc:'Sense retencions.',path:[
+    [41.040,1.250],[41.018,1.205],[40.998,1.160],[40.978,1.115],
+    [40.958,1.070],[40.938,1.025],[40.918,0.980],[40.900,0.935],
+    [40.882,0.890],[40.865,0.845],[40.848,0.800],[40.830,0.755],
+    [40.815,0.710],[40.812,0.660]
   ]},
 ];
 var SC={ok:'#187a40',warn:'#c8930a',err:'#c0271e'};
 var SL={ok:'FLUID',warn:'DENS',err:'RETENCIONS'};
 
 function drawTransit(){
+  var m=tabMaps.transit;
+
+  // ── TomTom real traffic layer ──────────────────────────────────────────
+  // Replace YOUR_TOMTOM_KEY with your free API key from developer.tomtom.com
+  var TOMTOM_KEY = 'rq2MjXKxaF2cWAhOKVfNyvD8RCjDZJ1T';
+
+  // Remove previous traffic layers
+  if(m._tomtomFlow) { m.removeLayer(m._tomtomFlow); m._tomtomFlow=null; }
+  if(m._tomtomInc)  { m.removeLayer(m._tomtomInc);  m._tomtomInc=null;  }
+
+  if(TOMTOM_KEY !== 'YOUR_TOMTOM_KEY') {
+    // Real traffic flow layer (colors roads green/yellow/red)
+    m._tomtomFlow = L.tileLayer(
+      'https://api.tomtom.com/traffic/map/4/tile/flow/relative0/{z}/{x}/{y}.png?key='+TOMTOM_KEY+'&tileSize=256',
+      {opacity:0.8, maxZoom:19, attribution:'© TomTom'}
+    ).addTo(m);
+
+    // Traffic incidents layer (shows accidents, roadworks icons)
+    m._tomtomInc = L.tileLayer(
+      'https://api.tomtom.com/traffic/map/4/tile/incidents/s3/{z}/{x}/{y}.png?key='+TOMTOM_KEY+'&tileSize=256',
+      {opacity:0.9, maxZoom:19}
+    ).addTo(m);
+
+    // Update sidebar to show real traffic message
+    document.getElementById('transitSidebar').innerHTML =
+      '<div style="font-size:8px;letter-spacing:2px;font-family:Share Tech Mono,monospace;color:var(--text-dim);margin-bottom:8px">TRÀNSIT EN TEMPS REAL</div>'
+      +'<div style="background:rgba(24,122,64,.08);border:1px solid rgba(24,122,64,.3);border-radius:4px;padding:10px;font-size:11px;color:var(--green);font-family:Share Tech Mono,monospace;margin-bottom:10px">✓ TOMTOM CONNECTAT<br><span style="color:var(--text-dim);font-size:9px">Dades en temps real</span></div>'
+      +'<div style="font-size:11px;color:var(--text-dim);font-family:Share Tech Mono,monospace;line-height:1.6">'
+      +'<b style="color:#187a40">■</b> Fluid<br>'
+      +'<b style="color:#c8930a">■</b> Dens / Lent<br>'
+      +'<b style="color:#c0271e">■</b> Retencions<br>'
+      +'<b style="color:#888">■</b> Dades no disponibles'
+      +'</div>'
+      +'<div style="margin-top:12px;font-size:9px;color:var(--text-dim);font-family:Share Tech Mono,monospace;border-top:1px solid var(--border);padding-top:8px">'
+      +'Les icones sobre el mapa indiquen accidents, obres i talls de carretera en temps real.'
+      +'</div>';
+
+    document.getElementById('transitBadge').textContent='EN VIVO';
+    document.getElementById('transitBadge').className='htab-badge b-ok';
+    return; // skip manual roads when TomTom is active
+  }
+
+  // ── Fallback: manual road lines ──────────────────────────────────────────
+  // (shown when no TomTom key is configured)
+  tabLayers.transit.forEach(function(l){m.removeLayer(l);});tabLayers.transit=[];
   var m=tabMaps.transit;
   tabLayers.transit.forEach(function(l){m.removeLayer(l);});tabLayers.transit=[];
   var html='<div style="font-size:8px;letter-spacing:2px;font-family:Share Tech Mono,monospace;color:var(--text-dim);margin-bottom:8px">CARRETERES DE CATALUNYA</div>';
