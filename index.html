@@ -163,25 +163,22 @@
 
   /* dropdown panel */
   .tetra-panel {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    width: 560px;
+    position: fixed;
+    top: 56px;
+    right: -480px;
+    width: 480px;
+    height: calc(100vh - 56px);
     background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    box-shadow: 0 8px 40px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,123,168,0.08);
-    z-index: 5000;
+    border-left: 1px solid var(--border);
+    box-shadow: -4px 0 24px rgba(0,0,0,0.10);
+    z-index: 4000;
     overflow: hidden;
-    opacity: 0;
-    transform: translateY(-6px);
-    pointer-events: none;
-    transition: opacity 0.2s, transform 0.2s;
+    display: flex;
+    flex-direction: column;
+    transition: right 0.3s cubic-bezier(0.4,0,0.2,1);
   }
   .tetra-panel.open {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: all;
+    right: 0;
   }
   .tetra-panel-header {
     padding: 10px 14px;
@@ -215,20 +212,24 @@
     flex-shrink: 0;
   }
   .tetra-body {
-    display: grid;
-    grid-template-columns: 1fr 200px;
-    gap: 0;
-  }
-  #tetraMap {
-    height: 240px;
-  }
-  .tetra-stats {
-    padding: 12px;
-    border-left: 1px solid var(--border);
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    flex: 1;
+    overflow: hidden;
+  }
+  #tetraMap {
+    flex: 1;
+    min-height: 0;
+  }
+  .tetra-stats {
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
     overflow-y: auto;
+    max-height: 200px;
+    flex-shrink: 0;
   }
   .tetra-stat-title {
     font-size: 9px;
@@ -884,6 +885,13 @@
   .leg-dot.ocupado { background: #9a7200; }
   .leg-dot.enruta  { background: #1460c8; }
 
+
+  /* TETRA Tower SVG icon on map */
+  .tetra-tower-icon {
+    background: none;
+    border: none;
+  }
+
 </style>
 </head>
 <body>
@@ -1059,6 +1067,12 @@
             <span class="activo-dot" style="background:#c84a10"></span>
             🚒 Bomberos
             <span class="activo-count" id="countBomberos">0</span>
+          </label>
+          <label class="activo-item">
+            <input type="checkbox" checked onchange="toggleActivoLayer('forestals', this.checked)">
+            <span class="activo-dot" style="background:#4a7c2f"></span>
+            🌲 Ag. Forestal
+            <span class="activo-count" id="countForestals">0</span>
           </label>
           <div class="activos-sep"></div>
           <div class="activos-legend">
@@ -1298,6 +1312,13 @@ const RESOURCES = {
     {name:'Bombers B-09', detail:'Rescat Tècnic Muntanya', status:'libre', base:[41.4060, 2.1250]},
     {name:'Bombers B-02', detail:'Extinció i Rescat', status:'ocupado', base:[41.4340, 2.1560]},
     {name:'BRIF Unitat 1', detail:'Brigada Forestal Tibidabo', status:'libre', base:[41.4420, 2.1180]},
+  ],
+  forestals: [
+    {name:'Agent Forestal AF-01', detail:'Parc de Collserola', status:'libre', base:[41.4310, 2.1120]},
+    {name:'Agent Forestal AF-02', detail:'Zona Tibidabo Nord', status:'libre', base:[41.4450, 2.1190]},
+    {name:'Agent Forestal AF-03', detail:'Vallvidrera', status:'ocupado', base:[41.4180, 2.0940]},
+    {name:'Agent Forestal AF-04', detail:'Parc de Collserola Est', status:'libre', base:[41.4260, 2.1060]},
+    {name:'Agent Forestal AF-05', detail:'Serra de Collserola', status:'en-ruta', base:[41.4380, 2.1030]},
   ]
 };
 
@@ -1312,7 +1333,8 @@ function dist(lat1, lng1, lat2, lng2) {
 const RESOURCE_ICONS = {
   ambulancias: {icon:'🚑', color:'#187a40'},
   policias: {icon:'🚔', color:'#1460c8'},
-  bomberos: {icon:'🚒', color:'#c84a10'}
+  bomberos: {icon:'🚒', color:'#c84a10'},
+  forestals: {icon:'🌲', color:'#4a7c2f'}
 };
 
 const STATUS_LABELS = {libre:'LIBRE', ocupado:'OCUPADO', 'en-ruta':'EN RUTA'};
@@ -1490,7 +1512,11 @@ function toggleTetra() {
   document.getElementById('eyeClosed').style.display = tetraOpen ? 'block' : 'none';
   document.getElementById('tetraEye').classList.toggle('active', tetraOpen);
 
-  if (tetraOpen && !tetraMap) initTetraMap();
+  if (tetraOpen && !tetraMap) {
+    initTetraMap();
+  } else if (tetraOpen && tetraMap) {
+    setTimeout(() => tetraMap.invalidateSize(), 310);
+  }
 
   // Close when clicking outside
   if (tetraOpen) {
@@ -1501,9 +1527,11 @@ function toggleTetra() {
 }
 
 function tetraOutsideClick(e) {
-  if (!document.getElementById('tetraWrapper').contains(e.target)) {
+  const panel = document.getElementById('tetraPanel');
+  const wrapper = document.getElementById('tetraWrapper');
+  if (!panel.contains(e.target) && !wrapper.contains(e.target)) {
     tetraOpen = false;
-    document.getElementById('tetraPanel').classList.remove('open');
+    panel.classList.remove('open');
     document.getElementById('eyeOpen').style.display  = 'block';
     document.getElementById('eyeClosed').style.display = 'none';
     document.getElementById('tetraEye').classList.remove('active');
@@ -1514,8 +1542,8 @@ function tetraOutsideClick(e) {
 function initTetraMap() {
   tetraMap = L.map('tetraMap', {
     center: [41.4200, 2.1500],
-    zoom: 10,
-    zoomControl: false,
+    zoom: 11,
+    zoomControl: true,
     attributionControl: false
   });
 
@@ -1527,7 +1555,8 @@ function initTetraMap() {
   renderTetraStats();
   updateTetraTime();
 
-  setTimeout(() => tetraMap.invalidateSize(), 50);
+  setTimeout(() => tetraMap.invalidateSize(), 100);
+  setTimeout(() => tetraMap.invalidateSize(), 400);
 }
 
 function renderTetraLayers() {
@@ -1536,44 +1565,68 @@ function renderTetraLayers() {
 
   TETRA_BASES.forEach(base => {
     const color = TETRA_COLOR[base.status];
+    const fillOpacity = base.status === 'ok' ? 0.13 : base.status === 'warn' ? 0.11 : 0.07;
+    const dashArray = base.status === 'err' ? '6 5' : null;
 
-    // Coverage circle
+    // Coverage area circle
     const circle = L.circle([base.lat, base.lng], {
       radius: TETRA_RADIUS_KM * 1000,
       color: color,
       fillColor: color,
-      fillOpacity: base.status === 'err' ? 0.06 : 0.10,
-      weight: 1.5,
-      dashArray: base.status === 'err' ? '5 5' : null,
-      opacity: 0.7
+      fillOpacity: fillOpacity,
+      weight: base.status === 'err' ? 1.5 : 2,
+      dashArray: dashArray,
+      opacity: 0.8
     }).addTo(tetraMap)
       .bindPopup(`
-        <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:${color}">
-          <b>${base.id}</b> — ${base.name}<br>
-          Estado: <b>${TETRA_STATUS_LABEL[base.status]}</b><br>
-          Carga: ${base.load}%
+        <div style="font-family:'Share Tech Mono',monospace;font-size:11px;padding:4px">
+          <div style="color:${color};font-weight:700;margin-bottom:4px">${base.id} — ${base.name}</div>
+          <div style="color:#2c3a52">Estado: <b style="color:${color}">${TETRA_STATUS_LABEL[base.status]}</b></div>
+          <div style="color:#2c3a52">Carga canal: <b>${base.load}%</b></div>
         </div>
       `);
 
-    // Tower marker
+    // SVG tower icon
+    const towerSVG = `
+      <svg width="28" height="34" viewBox="0 0 28 34" xmlns="http://www.w3.org/2000/svg">
+        <!-- Tower legs -->
+        <line x1="14" y1="4" x2="4" y2="28" stroke="${color}" stroke-width="2.2" stroke-linecap="round"/>
+        <line x1="14" y1="4" x2="24" y2="28" stroke="${color}" stroke-width="2.2" stroke-linecap="round"/>
+        <!-- Cross braces -->
+        <line x1="7"  y1="14" x2="21" y2="14" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="5"  y1="22" x2="23" y2="22" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="7"  y1="14" x2="21" y2="22" stroke="${color}" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
+        <line x1="21" y1="14" x2="7"  y2="22" stroke="${color}" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
+        <!-- Mast top -->
+        <line x1="14" y1="0" x2="14" y2="8" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/>
+        <!-- Signal arcs (only if not err) -->
+        ${base.status !== 'err' ? `
+        <path d="M 9 3 Q 14 -1 19 3" stroke="${color}" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.7"/>
+        <path d="M 6 6 Q 14 -4 22 6" stroke="${color}" stroke-width="1.2" fill="none" stroke-linecap="round" opacity="0.4"/>
+        ` : `
+        <line x1="10" y1="0" x2="18" y2="8" stroke="${color}" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+        <line x1="18" y1="0" x2="10" y2="8" stroke="${color}" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+        `}
+        <!-- Base platform -->
+        <rect x="8" y="27" width="12" height="3" rx="1.5" fill="${color}" opacity="0.7"/>
+        <!-- Status dot -->
+        <circle cx="14" cy="32" r="2.5" fill="${color}" stroke="white" stroke-width="1.5"/>
+      </svg>`;
+
     const towerIcon = L.divIcon({
-      html: `<div style="
-        width:12px;height:12px;
-        background:${color};
-        border:2px solid rgba(255,255,255,0.8);
-        border-radius:50%;
-        box-shadow:0 0 8px ${color},0 0 2px rgba(0,0,0,0.15);
-      "></div>`,
-      iconSize:[12,12], iconAnchor:[6,6], className:''
+      html: towerSVG,
+      iconSize: [28, 34],
+      iconAnchor: [14, 32],
+      className: 'tetra-tower-icon'
     });
 
-    const marker = L.marker([base.lat, base.lng], {icon: towerIcon})
+    const marker = L.marker([base.lat, base.lng], {icon: towerIcon, zIndexOffset: 100})
       .addTo(tetraMap)
       .bindPopup(`
-        <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:${color}">
-          <b>${base.id}</b> — ${base.name}<br>
-          Estado: <b>${TETRA_STATUS_LABEL[base.status]}</b><br>
-          Carga canal: ${base.load}%
+        <div style="font-family:'Share Tech Mono',monospace;font-size:11px;padding:4px">
+          <div style="color:${color};font-weight:700;margin-bottom:4px">${base.id} — ${base.name}</div>
+          <div style="color:#2c3a52">Estado: <b style="color:${color}">${TETRA_STATUS_LABEL[base.status]}</b></div>
+          <div style="color:#2c3a52">Carga canal: <b>${base.load}%</b></div>
         </div>
       `);
 
@@ -1651,8 +1704,8 @@ function showToast(msg, isError = false) {
 
 // ────────────────────────── ACTIVOS DISPONIBLES
 let activosOpen = false;
-let activoMapMarkers = { ambulancias: [], policias: [], bomberos: [] };
-let activoLayerVisible = { ambulancias: true, policias: true, bomberos: true };
+let activoMapMarkers = { ambulancias: [], policias: [], bomberos: [], forestals: [] };
+let activoLayerVisible = { ambulancias: true, policias: true, bomberos: true, forestals: true };
 
 const STATUS_BORDER = { libre: '#187a40', ocupado: '#9a7200', 'en-ruta': '#1460c8' };
 
