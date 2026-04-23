@@ -231,6 +231,11 @@ function refreshMeteocat() { if(panelMaps.meteocat) renderMeteocatLayers(); upda
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
+  html, body {
+    overflow: hidden;
+    height: 100%;
+  }
+
   body {
     background: var(--bg);
     font-family: 'Rajdhani', sans-serif;
@@ -251,6 +256,7 @@ function refreshMeteocat() { if(panelMaps.meteocat) renderMeteocatLayers(); upda
     align-items: center;
     justify-content: space-between;
     position: relative;
+    z-index: 5000;
   }
   header::after {
     content: '';
@@ -1097,10 +1103,17 @@ function refreshMeteocat() { if(panelMaps.meteocat) renderMeteocatLayers(); upda
     z-index: 4000;
     display: flex;
     flex-direction: column;
-    transform: translateY(-100%);
-    transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+    transform: translateY(-110%);
+    visibility: hidden;
+    pointer-events: none;
+    transition: transform 0.35s cubic-bezier(0.4,0,0.2,1), visibility 0s linear 0.35s;
   }
-  .fullscreen-panel.open { transform: translateY(0); }
+  .fullscreen-panel.open {
+    transform: translateY(0);
+    visibility: visible;
+    pointer-events: all;
+    transition: transform 0.35s cubic-bezier(0.4,0,0.2,1), visibility 0s linear 0s;
+  }
   .fp-header {
     padding: 10px 16px;
     border-bottom: 1px solid var(--border);
