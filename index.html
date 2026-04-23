@@ -165,20 +165,22 @@
   .tetra-panel {
     position: fixed;
     top: 56px;
-    right: -480px;
-    width: 480px;
+    left: 0;
+    right: 0;
+    width: 100%;
     height: calc(100vh - 56px);
     background: var(--panel);
-    border-left: 1px solid var(--border);
-    box-shadow: -4px 0 24px rgba(0,0,0,0.10);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.10);
     z-index: 4000;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    transition: right 0.3s cubic-bezier(0.4,0,0.2,1);
+    transform: translateY(-100%);
+    transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
   }
   .tetra-panel.open {
-    right: 0;
+    transform: translateY(0);
   }
   .tetra-panel-header {
     padding: 10px 14px;
@@ -212,24 +214,24 @@
     flex-shrink: 0;
   }
   .tetra-body {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr 280px;
     flex: 1;
     overflow: hidden;
-  }
-  #tetraMap {
-    flex: 1;
     min-height: 0;
   }
+  #tetraMap {
+    width: 100%;
+    height: 100%;
+  }
   .tetra-stats {
-    padding: 10px 12px;
-    border-top: 1px solid var(--border);
+    padding: 12px;
+    border-left: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     gap: 5px;
     overflow-y: auto;
-    max-height: 200px;
-    flex-shrink: 0;
+    background: var(--panel);
   }
   .tetra-stat-title {
     font-size: 9px;
@@ -928,10 +930,11 @@
         <div class="tetra-panel-header">
           <div class="tetra-panel-title">▸ COBERTURA RED TETRA — BASES ACTIVAS</div>
           <div class="tetra-legend">
-            <div class="tetra-legend-item"><div class="legend-dot" style="background:#00e676;box-shadow:0 0 6px #00e676"></div>Disponible</div>
-            <div class="tetra-legend-item"><div class="legend-dot" style="background:#ffd600;box-shadow:0 0 6px #ffd600"></div>Congestionada</div>
-            <div class="tetra-legend-item"><div class="legend-dot" style="background:#e84040;box-shadow:0 0 6px #e84040"></div>Sin cobertura</div>
+            <div class="tetra-legend-item"><div class="legend-dot" style="background:#187a40;box-shadow:0 0 5px #187a40"></div>Disponible</div>
+            <div class="tetra-legend-item"><div class="legend-dot" style="background:#9a7200;box-shadow:0 0 5px #9a7200"></div>Congestionada</div>
+            <div class="tetra-legend-item"><div class="legend-dot" style="background:#c0271e;box-shadow:0 0 5px #c0271e"></div>Sin cobertura</div>
           </div>
+          <button onclick="toggleTetra()" style="background:none;border:1px solid var(--border);color:var(--text-dim);padding:4px 12px;border-radius:4px;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:11px;margin-left:16px;transition:all 0.15s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">✕ CERRAR</button>
         </div>
         <div class="tetra-body">
           <div id="tetraMap"></div>
@@ -1515,7 +1518,7 @@ function toggleTetra() {
   if (tetraOpen && !tetraMap) {
     initTetraMap();
   } else if (tetraOpen && tetraMap) {
-    setTimeout(() => tetraMap.invalidateSize(), 310);
+    setTimeout(() => tetraMap.invalidateSize(), 360);
   }
 
   // Close when clicking outside
@@ -1732,7 +1735,7 @@ function activosOutside(e) {
 function renderActivosOnMap() {
   // Clear existing activo markers
   Object.values(activoMapMarkers).flat().forEach(m => map.removeLayer(m));
-  activoMapMarkers = { ambulancias: [], policias: [], bomberos: [] };
+  activoMapMarkers = { ambulancias: [], policias: [], bomberos: [], forestals: [] };
 
   for (const [type, resources] of Object.entries(RESOURCES)) {
     const color = RESOURCE_ICONS[type].color;
@@ -1767,7 +1770,9 @@ function renderActivosOnMap() {
               font-family:'Share Tech Mono',monospace;letter-spacing:1px">LIBRE</div>
           </div>
         `);
-      if (!activoLayerVisible[type]) marker.remove();
+      if (!activoLayerVisible[type]) {
+        map.removeLayer(marker);
+      }
       activoMapMarkers[type].push(marker);
     });
 
@@ -1777,8 +1782,19 @@ function renderActivosOnMap() {
 
 function toggleActivoLayer(type, visible) {
   activoLayerVisible[type] = visible;
+  // If turning on and no markers exist yet, render them first
+  if (visible && activoMapMarkers[type].length === 0 && activosOpen) {
+    renderActivosOnMap();
+    return;
+  }
   activoMapMarkers[type].forEach(m => {
-    if (visible) m.addTo(map); else map.removeLayer(m);
+    try {
+      if (visible) {
+        if (!map.hasLayer(m)) m.addTo(map);
+      } else {
+        if (map.hasLayer(m)) map.removeLayer(m);
+      }
+    } catch(e) {}
   });
 }
 
